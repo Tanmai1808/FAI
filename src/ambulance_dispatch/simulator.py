@@ -18,10 +18,11 @@ from .model import Ambulance, AmbulanceStatus, Incident, RateInterval
 from .policies.baselines import feasible_ambulances, select_b1, select_b2
 from .policies.bidding import Bid, compute_bid, local_minimum_winners
 from .policies.centralized import assign_b3
-from .policies.costs import marginal_coverage_cost, weighted_dispatch_cost
+from .policies.costs import CostBreakdown, marginal_coverage_cost, weighted_dispatch_cost
 
 
-POLICIES = ("B1", "B2", "B3", "BID")
+BASE_POLICIES = ("B1", "B2", "B3", "BID")
+POLICIES = ("B1", "B2", "B3", "BID", "B2q")
 COMMUNICATION_REGIMES = ("full", "radius-limited", "lossy", "none")
 
 
@@ -84,6 +85,9 @@ class RunResult:
     messages_delivered: int
     messages_per_incident: float
     demand_rmse: float
+    response_cost: float
+    external_coverage_cost: float
+    home_demand_cost: float
     dispatch_cost: float
     expiration_cost: float
     total_cost: float
@@ -101,7 +105,9 @@ def _initial_nodes(n_nodes: int, n_ambulances: int) -> tuple[int, ...]:
     return tuple(round(i * (n_nodes - 1) / (n_ambulances - 1)) for i in range(n_ambulances))
 
 
-def _incident_priority(state: IncidentState) -> tuple[float, int, int]:
+def _incident_priority(state: IncidentState, policy: str = "B1") -> tuple[float | int, float | int, int]:
+    if policy == "B2q":
+        return (-state.incident.criticality, state.incident.arrival_minute, state.incident.incident_id)
     return state.incident.arrival_minute, -state.incident.criticality, state.incident.incident_id
 
 
@@ -157,6 +163,9 @@ class Simulator:
         self.response_times: list[tuple[int, float]] = []
         self.duplicate_incident_ids: set[int] = set()
         self.total_responder_commitments = 0
+        self.response_cost = 0.0
+        self.external_coverage_cost = 0.0
+        self.home_demand_cost = 0.0
         self.dispatch_cost = 0.0
         self.expiration_cost = 0.0
         self.rmse_samples: list[float] = []
@@ -400,7 +409,7 @@ class Simulator:
         ambulance: Ambulance,
         idle_positions: dict[int, int] | None = None,
         true_rates: tuple[float, ...] | None = None,
-    ) -> float:
+    ) -> CostBreakdown:
         travel = self.city.travel(ambulance.node, state.incident.zone)
         response = self.now - state.incident.arrival_minute + travel
         busy = 2.0 * travel + self.config.on_scene_minutes
@@ -422,7 +431,7 @@ class Simulator:
         self,
         state: IncidentState,
         responder_ids: tuple[int, ...],
-        cost_overrides: dict[int, float] | None = None,
+        cost_overrides: dict[int, CostBreakdown] | None = None,
     ) -> None:
         if not responder_ids or state.allocated:
             return
@@ -434,7 +443,7 @@ class Simulator:
             self.duplicate_incident_ids.add(state.incident.incident_id)
         idle_snapshot = {a.ambulance_id: a.node for a in self.ambulances if a.status == AmbulanceStatus.IDLE}
         rates_snapshot = self._true_rates()
-        precomputed_costs = {
+        precomputed_costs: dict[int, CostBreakdown] = {
             ambulance_id: (
                 cost_overrides[ambulance_id]
                 if cost_overrides is not None and ambulance_id in cost_overrides
@@ -450,7 +459,11 @@ class Simulator:
             response = self.now - state.incident.arrival_minute + travel
             if response > state.deadline_minute - state.incident.arrival_minute + 1e-9:
                 raise RuntimeError("policy committed an ambulance that cannot meet the deadline")
-            self.dispatch_cost += precomputed_costs[ambulance_id]
+            cost = precomputed_costs[ambulance_id]
+            self.response_cost += cost.response_cost
+            self.external_coverage_cost += cost.external_coverage_cost
+            self.home_demand_cost += cost.home_demand_cost
+            self.dispatch_cost += cost.total
             origin = ambulance.node
             busy_minutes = 2.0 * travel + self.config.on_scene_minutes
             ambulance.status = AmbulanceStatus.RESPONSE_BUSY
@@ -466,7 +479,7 @@ class Simulator:
             states = [self.states[i] for i in self.pending if not self.states[i].resolved]
             if not states:
                 return
-            state = min(states, key=_incident_priority)
+            state = min(states, key=lambda s: _incident_priority(s, self.settings.policy))
             eligible = self._eligible(state)
             if not eligible:
                 # The oldest call may wait for a trip completion; a younger call could still be feasible.
@@ -477,8 +490,8 @@ class Simulator:
                         feasible_states.append((candidate, candidate_eligible))
                 if not feasible_states:
                     return
-                state, eligible = min(feasible_states, key=lambda pair: _incident_priority(pair[0]))
-            if self.settings.policy == "B1":
+                state, eligible = min(feasible_states, key=lambda pair: _incident_priority(pair[0], self.settings.policy))
+            if self.settings.policy in ("B1", "B2q"):
                 winner = select_b1(self.city, state.incident, eligible)
                 winners = () if winner is None else (winner.ambulance_id,)
             elif self.settings.policy == "B2":
@@ -491,12 +504,12 @@ class Simulator:
             self._dispatch(state, winners)
             self._reposition_decentralized()
 
-    def _b3_pairwise_cost(self, state: IncidentState, ambulance: Ambulance, idle: dict[int, int]) -> float:
+    def _b3_pairwise_cost(self, state: IncidentState, ambulance: Ambulance, idle: dict[int, int]) -> CostBreakdown | None:
         travel = self.city.travel(ambulance.node, state.incident.zone)
         response = self.now - state.incident.arrival_minute + travel
         deadline = state.deadline_minute - state.incident.arrival_minute
         if response > deadline:
-            return inf
+            return None
         busy = 2.0 * travel + self.config.on_scene_minutes
         coverage = marginal_coverage_cost(
             self.city,
@@ -513,28 +526,32 @@ class Simulator:
     def _allocate_b3(self) -> None:
         states = sorted(
             (self.states[i] for i in self.pending if not self.states[i].resolved),
-            key=_incident_priority,
+            key=lambda s: _incident_priority(s, self.settings.policy),
         )
         idle_agents = [a for a in self.ambulances if a.status == AmbulanceStatus.IDLE]
         if not states or not idle_agents:
             return
         idle = {a.ambulance_id: a.node for a in idle_agents}
-        costs = [[self._b3_pairwise_cost(state, ambulance, idle) for state in states] for ambulance in idle_agents]
+        pairwise_breakdowns = [
+            [self._b3_pairwise_cost(state, ambulance, idle) for state in states]
+            for ambulance in idle_agents
+        ]
+        costs = [
+            [b.total if b is not None else inf for b in row]
+            for row in pairwise_breakdowns
+        ]
         pairs = assign_b3(costs, self.config.weights.rho, idle_penalty=0.0)
         dispatches: list[tuple[IncidentState, int]] = []
-        cost_overrides: dict[int, float] = {}
+        cost_overrides: dict[int, CostBreakdown] = {}
         for ambulance_index, incident_index in pairs:
             ambulance_id = idle_agents[ambulance_index].ambulance_id
             state = states[incident_index]
             dispatches.append((state, ambulance_id))
-            cost_overrides[(state.incident.incident_id, ambulance_id)] = self._dispatch_cost(
-                state,
-                idle_agents[ambulance_index],
-                idle,
-                self._true_rates(),
-            )
+            breakdown = pairwise_breakdowns[ambulance_index][incident_index]
+            assert breakdown is not None
+            cost_overrides[ambulance_id] = breakdown
         for state, ambulance_id in dispatches:
-            self._dispatch(state, (ambulance_id,), {ambulance_id: cost_overrides[(state.incident.incident_id, ambulance_id)]})
+            self._dispatch(state, (ambulance_id,), {ambulance_id: cost_overrides[ambulance_id]})
         self._reposition_centralized()
 
     def _coverage_fraction_for(self, positions: list[int], rates: tuple[float, ...]) -> float:
@@ -698,6 +715,9 @@ class Simulator:
             messages_delivered=self.channel.messages_delivered,
             messages_per_incident=self.channel.messages_sent / n_incidents if n_incidents else 0.0,
             demand_rmse=sum(self.rmse_samples) / len(self.rmse_samples) if self.rmse_samples else 0.0,
+            response_cost=self.response_cost,
+            external_coverage_cost=self.external_coverage_cost,
+            home_demand_cost=self.home_demand_cost,
             dispatch_cost=self.dispatch_cost,
             expiration_cost=self.expiration_cost,
             total_cost=self.dispatch_cost + self.expiration_cost,

@@ -20,6 +20,7 @@ from ambulance_dispatch.metrics import bootstrap_mean_interval, paired_b3_gaps, 
 COLORS = {
     "B1": "#35618A",
     "B2": "#8064A2",
+    "B2q": "#2A9D8F",
     "B3": "#4E9A76",
     "BID": "#D64F61",
     "BID/full": "#D64F61",

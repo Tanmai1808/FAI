@@ -22,9 +22,14 @@ class ExperimentDesignTests(unittest.TestCase):
             (7, "weight_tradeoff"),
         )})
         self.assertEqual({case.seed for case in cases}, {17, 18})
+        for exp_id in ("exp1_ambulance_count", "exp2_total_demand", "exp6_criticality_mix"):
+            exp_cases = [case for case in cases if case.experiment == exp_id]
+            self.assertEqual({case.policy for case in exp_cases}, {"B1", "B2", "B2q", "B3", "BID"})
+        for exp_id in ("exp3_demand_pattern", "exp4_communication", "exp5_demand_knowledge", "exp7_weight_tradeoff"):
+            exp_cases = [case for case in cases if case.experiment == exp_id]
+            self.assertEqual({case.policy for case in exp_cases}, {"B1", "B2", "B3", "BID"})
         exp4 = [case for case in cases if case.experiment == "exp4_communication"]
         self.assertEqual(len(exp4), 4 * 4 * 2)
-        self.assertEqual({case.policy for case in exp4}, {"B1", "B2", "B3", "BID"})
         exp5_bid = [case for case in cases if case.experiment == "exp5_demand_knowledge" and case.policy == "BID"]
         self.assertEqual({case.oracle_demand for case in exp5_bid}, {False, True})
         with self.assertRaises(ValueError):
@@ -57,6 +62,15 @@ class ExperimentDesignTests(unittest.TestCase):
                 rows = list(csv.DictReader(handle))
             self.assertEqual(len(rows), 16)
             self.assertTrue(all(row["seed"] == "101" for row in rows))
+            for field in (
+                "response_cost",
+                "external_coverage_cost",
+                "home_demand_cost",
+                "expiration_cost",
+                "dispatch_cost",
+                "total_cost",
+            ):
+                self.assertTrue(all(field in row for row in rows), f"missing {field} in raw_results.csv")
             with self.assertRaises(FileExistsError):
                 run_experiment_suite(project, out, base, [101], selected={"exp4"})
 

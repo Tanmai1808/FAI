@@ -1,21 +1,22 @@
 {
   "design": "one-factor-at-a-time",
-  "policies": ["B1", "B2", "B3", "BID"],
+  "base_policies": ["B1", "B2", "B3", "BID"],
+  "policies": ["B1", "B2", "B3", "BID", "B2q"],
   "default_full_profile": {
     "seed_start": 1000,
     "seed_count": 20,
     "arrival_horizon_minutes": 6000,
     "expected_incidents_per_default_run": 500,
     "experiment_families": [
-      {"id": "exp1", "factor": "ambulance_count", "levels": [3, 5, 7, 10]},
-      {"id": "exp2", "factor": "total_rate_per_hour", "levels": [2.5, 5.0, 10.0]},
-      {"id": "exp3", "factor": "demand_pattern", "levels": ["uniform", "hotspots", "shifting"]},
-      {"id": "exp4", "factor": "communication", "levels": ["full", "radius-limited", "lossy", "none"]},
-      {"id": "exp5", "factor": "demand_knowledge", "levels": ["learned", "oracle"]},
-      {"id": "exp6", "factor": "criticality_mix", "levels": ["low-heavy", "balanced", "high-heavy"]},
-      {"id": "exp7", "factor": "time_coverage_weights", "levels": ["coverage-light", "balanced", "coverage-heavy"]}
+      {"id": "exp1", "factor": "ambulance_count", "levels": [3, 5, 7, 10], "policies": ["B1", "B2", "B2q", "B3", "BID"]},
+      {"id": "exp2", "factor": "total_rate_per_hour", "levels": [2.5, 5.0, 10.0], "policies": ["B1", "B2", "B2q", "B3", "BID"]},
+      {"id": "exp3", "factor": "demand_pattern", "levels": ["uniform", "hotspots", "shifting"], "policies": ["B1", "B2", "B3", "BID"]},
+      {"id": "exp4", "factor": "communication", "levels": ["full", "radius-limited", "lossy", "none"], "policies": ["B1", "B2", "B3", "BID"]},
+      {"id": "exp5", "factor": "demand_knowledge", "levels": ["learned", "oracle"], "policies": ["B1", "B2", "B3", "BID"]},
+      {"id": "exp6", "factor": "criticality_mix", "levels": ["low-heavy", "balanced", "high-heavy"], "policies": ["B1", "B2", "B2q", "B3", "BID"]},
+      {"id": "exp7", "factor": "time_coverage_weights", "levels": ["coverage-light", "balanced", "coverage-heavy"], "policies": ["B1", "B2", "B3", "BID"]}
     ],
-    "policy_run_count": 1760,
+    "policy_run_count": 1960,
     "deviation_runs_per_seed": "1 baseline + one time-only deviation for each ambulance"
   }
 }

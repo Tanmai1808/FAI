@@ -8,7 +8,7 @@ from typing import Mapping
 from ..config import Weights
 from ..graph import City
 from ..model import Ambulance, Incident
-from .costs import marginal_coverage_cost, weighted_dispatch_cost
+from .costs import CostBreakdown, marginal_coverage_cost, weighted_dispatch_cost
 
 
 @dataclass(frozen=True)
@@ -17,6 +17,7 @@ class Bid:
     cost: float
     staging_node: int
     eligible: bool = True
+    breakdown: CostBreakdown | None = None
 
     @property
     def ordering_key(self) -> tuple[float, int]:
@@ -54,7 +55,7 @@ def compute_bid(
         coverage_radius_minutes,
     )
     cost = weighted_dispatch_cost(response, incident.criticality, marginal, weights)
-    return Bid(ambulance.ambulance_id, cost, ambulance.node)
+    return Bid(ambulance.ambulance_id, cost.total, ambulance.node, breakdown=cost)
 
 
 def local_minimum_winners(

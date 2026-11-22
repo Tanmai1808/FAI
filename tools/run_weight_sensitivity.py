@@ -20,7 +20,7 @@ sys.path.insert(0, str(PROJECT_ROOT / "src"))
 
 from ambulance_dispatch.config import ScenarioConfig, Weights  # noqa: E402
 from ambulance_dispatch.metrics import paired_b3_gaps, summarize_by  # noqa: E402
-from ambulance_dispatch.simulator import POLICIES, RunSettings, simulate  # noqa: E402
+from ambulance_dispatch.simulator import BASE_POLICIES, RunSettings, simulate  # noqa: E402
 
 
 def weight_sweep(
@@ -120,7 +120,7 @@ def run_weight_sensitivity(
             {"factor": factor, "level": value, "weights": asdict(config.weights)}
             for factor, value, config in cells
         ],
-        "case_count": len(cells) * len(seed_list) * len(POLICIES),
+        "case_count": len(cells) * len(seed_list) * len(BASE_POLICIES),
         "communication_settings": {
             "regime": "full",
             "radius_minutes": communication_radius,
@@ -128,7 +128,7 @@ def run_weight_sensitivity(
             "note": "radius and loss defaults are recorded but inactive under full communication",
         },
         "policy_settings": {
-            "policies": list(POLICIES),
+            "policies": list(BASE_POLICIES),
             "demand_knowledge": "B1/B2 learned diagnostic only; B3 true-rate oracle; BID learned-rate input",
             "deviation": None,
         },
@@ -146,7 +146,7 @@ def run_weight_sensitivity(
     index = 0
     for factor, level, config in cells:
         for seed in seed_list:
-            for policy in POLICIES:
+            for policy in BASE_POLICIES:
                 index += 1
                 demand = "oracle" if policy == "B3" else "learned"
                 scenario_id = f"exp8_weight_sensitivity:{factor}={level:g}"
@@ -231,8 +231,8 @@ def main() -> int:
         parser.error("experiment config must name exp8_weight_sensitivity")
     if experiment_config.get("communication", {}).get("regime") != "full":
         parser.error("the weight sensitivity config must use full communication")
-    if tuple(experiment_config.get("policies", ())) != POLICIES:
-        parser.error("the configured policy list must match the implemented four policies")
+    if tuple(experiment_config.get("policies", ())) != BASE_POLICIES:
+        parser.error("the configured policy list must match the implemented four base policies")
     seed_start = experiment_config["seed_start"] if args.seed_start is None else args.seed_start
     seed_count = experiment_config["seed_count"] if args.seed_count is None else args.seed_count
     if seed_count < 1:

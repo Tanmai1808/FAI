@@ -16,7 +16,7 @@ from typing import Any, Iterable
 
 from .config import ScenarioConfig, Weights, severity_mix
 from .metrics import bootstrap_mean_interval, paired_b3_gaps, summarize_by
-from .simulator import POLICIES, RunResult, RunSettings, simulate
+from .simulator import BASE_POLICIES, POLICIES, RunResult, RunSettings, simulate
 
 
 @dataclass(frozen=True)
@@ -40,7 +40,7 @@ def _family(
     level: str,
     config: ScenarioConfig,
     seeds: Iterable[int],
-    policies: tuple[str, ...] = POLICIES,
+    policies: tuple[str, ...] = BASE_POLICIES,
     communication: str = "full",
     demand_condition: str = "learned",
 ) -> Iterable[ExperimentCase]:
@@ -77,10 +77,12 @@ def build_experiment_cases(
         if selected_families is None or experiment in selected_families:
             cases.extend(_family(experiment, level, config, seed_list, **kwargs))
 
+    exp_policies_with_b2q = ("B1", "B2", "B2q", "B3", "BID")
+
     for n in (3, 5, 7, 10):
-        add("exp1_ambulance_count", f"n={n}", replace(base, n_ambulances=n))
+        add("exp1_ambulance_count", f"n={n}", replace(base, n_ambulances=n), policies=exp_policies_with_b2q)
     for rate, label in ((2.5, "low"), (5.0, "medium"), (10.0, "high")):
-        add("exp2_total_demand", f"{label}:{rate:g}/h", replace(base, total_rate_per_hour=rate))
+        add("exp2_total_demand", f"{label}:{rate:g}/h", replace(base, total_rate_per_hour=rate), policies=exp_policies_with_b2q)
     for pattern in ("uniform", "hotspots", "shifting"):
         add("exp3_demand_pattern", pattern, replace(base, demand_pattern=pattern))
     for regime in ("full", "radius-limited", "lossy", "none"):
@@ -102,6 +104,7 @@ def build_experiment_cases(
             "exp6_criticality_mix",
             mix,
             replace(base, severity_probabilities=severity_mix(mix)),
+            policies=exp_policies_with_b2q,
         )
     for label, weights in (
         ("coverage-light", Weights(alpha=1.0, beta=4.0, gamma=4.0, rho=base.weights.rho)),

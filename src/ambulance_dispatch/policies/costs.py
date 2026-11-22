@@ -15,6 +15,17 @@ class MarginalCoverage:
     home_expected_calls: float
 
 
+@dataclass(frozen=True)
+class CostBreakdown:
+    response_cost: float
+    external_coverage_cost: float
+    home_demand_cost: float
+
+    @property
+    def total(self) -> float:
+        return self.response_cost + self.external_coverage_cost + self.home_demand_cost
+
+
 def marginal_coverage_cost(
     city: City,
     agent_id: int,
@@ -54,10 +65,10 @@ def weighted_dispatch_cost(
     criticality: int,
     coverage: MarginalCoverage,
     weights: Weights,
-) -> float:
-    return (
-        weights.alpha * criticality * response_minutes
-        + weights.beta * coverage.outside_home_expected_calls
-        + weights.gamma * coverage.home_expected_calls
+) -> CostBreakdown:
+    return CostBreakdown(
+        response_cost=weights.alpha * criticality * response_minutes,
+        external_coverage_cost=weights.beta * coverage.outside_home_expected_calls,
+        home_demand_cost=weights.gamma * coverage.home_expected_calls,
     )
 

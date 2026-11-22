@@ -13,6 +13,7 @@ from PIL import Image, ImageDraw, ImageFont
 COLORS = {
     "B1": "#355C7D",
     "B2": "#6C5B7B",
+    "B2q": "#2A9D8F",
     "B3": "#99B898",
     "BID": "#E56B6F",
 }

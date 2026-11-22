@@ -14,7 +14,12 @@ from ambulance_dispatch.model import Ambulance, AmbulanceStatus, Incident
 from ambulance_dispatch.policies.baselines import select_b1, select_b2
 from ambulance_dispatch.policies.bidding import Bid, compute_bid, local_minimum_winners
 from ambulance_dispatch.policies.centralized import assign_b3, hungarian_min_cost
-from ambulance_dispatch.policies.costs import marginal_coverage_cost
+from ambulance_dispatch.policies.costs import (
+    CostBreakdown,
+    MarginalCoverage,
+    marginal_coverage_cost,
+    weighted_dispatch_cost,
+)
 
 
 class CommunicationTests(unittest.TestCase):
@@ -118,6 +123,15 @@ class PolicyTests(unittest.TestCase):
         # demand during this unit's absence, while outside-home R sees no lost cover.
         self.assertEqual(marginal.outside_home_expected_calls, 0.0)
         self.assertEqual(marginal.home_expected_calls, 1.0)
+
+    def test_weighted_dispatch_cost_breakdown(self) -> None:
+        marginal = MarginalCoverage(outside_home_expected_calls=2.5, home_expected_calls=1.5)
+        weights = Weights(alpha=2.0, beta=4.0, gamma=6.0)
+        breakdown = weighted_dispatch_cost(response_minutes=10.0, criticality=3, coverage=marginal, weights=weights)
+        self.assertEqual(breakdown.response_cost, 2.0 * 3 * 10.0)
+        self.assertEqual(breakdown.external_coverage_cost, 4.0 * 2.5)
+        self.assertEqual(breakdown.home_demand_cost, 6.0 * 1.5)
+        self.assertEqual(breakdown.total, 60.0 + 10.0 + 9.0)
 
 
 if __name__ == "__main__":
