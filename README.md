@@ -14,7 +14,7 @@ Cooperative Dec-POMDP simulation of urban EMS fleet dispatch on a 5×5 grid. Eva
 ## Repository Structure
 - `src/ambulance_dispatch/`: Core discrete-event simulator, policies, demand learning, metrics, runner.
 - `configs/`: Baseline and experiment matrix JSON definitions (`default.json`, `experiment_matrix.json`).
-- `tests/`: 48 deterministic unit and integration tests (`python -m unittest discover -s tests`).
+- `tests/`: 54 deterministic unit and integration tests (`python -m unittest discover -s tests`).
 - `tools/run_weight_sensitivity.py`: Independent one-factor $\alpha, \beta, \gamma$ weight sensitivity runner.
 - `report/`: 8-page arXiv-style report (`main.tex`, `main.pdf`), asset builder, and plotting scripts.
 - `scripts/run_final.sh`: One-command suite runner with fail-fast execution and clean-tree guard.
