@@ -42,6 +42,7 @@ def _parser() -> argparse.ArgumentParser:
     )
     suite.add_argument("--output-dir", type=Path)
     suite.add_argument("--bootstrap-resamples", type=int, default=2000)
+    suite.add_argument("--allow-dirty", action="store_true", help="allow run on a dirty working tree")
     return parser
 
 
@@ -70,6 +71,12 @@ def main(argv: list[str] | None = None) -> int:
 
     seed_count = args.seeds if args.seeds is not None else (1 if args.profile == "quick" else 20)
     horizon = args.horizon if args.horizon is not None else (600.0 if args.profile == "quick" else 6000.0)
+    is_final = args.profile == "full" or (args.seeds is not None and args.seeds >= 20)
+    if is_final and not args.allow_dirty:
+        from .experiments import _git_status
+        _rev, is_dirty = _git_status(Path.cwd())
+        if is_dirty:
+            raise RuntimeError("refusing to start a final run on a dirty working tree; pass --allow-dirty to override")
     config = replace(
         ScenarioConfig(),
         horizon_minutes=horizon,

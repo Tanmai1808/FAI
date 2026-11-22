@@ -6,7 +6,7 @@ import random
 from collections import defaultdict
 from dataclasses import dataclass
 from math import nan
-from typing import Iterable, Mapping, Sequence
+from typing import Any, Iterable, Mapping, Sequence
 
 
 @dataclass(frozen=True)
@@ -123,4 +123,112 @@ def summarize_by(
         summary.update({"metric": metric, "mean": mean, "ci95_low": low, "ci95_high": high, "n": n})
         summaries.append(summary)
     return summaries
+
+
+def compute_unilateral_deviation_statistics(
+    records: Sequence[Mapping[str, Any]],
+    confidence: float = 0.95,
+    resamples: int = 2_000,
+    seed: int = 7341,
+) -> list[dict[str, Any]]:
+    """Compute corrected unilateral-deviation statistic epsilon_hat and per-agent gains with bootstrap CIs.
+
+    epsilon_hat = max_i (mean_s [cost(all-BID) - cost(agent i deviates)])
+    Resamples paired seeds with replacement, keeping all agents' deviations together per sampled seed.
+    """
+    if not records:
+        return []
+
+    # Group by seed: seed -> (baseline_cost, dict of agent_id -> improvement)
+    by_seed: dict[int, tuple[float, dict[int, float]]] = {}
+    for r in records:
+        s = int(r["seed"])
+        agent = int(r["deviator_id"])
+        base_cost = float(r["baseline_cost"])
+        improvement = float(r["team_payoff_improvement"])
+        if s not in by_seed:
+            by_seed[s] = (base_cost, {})
+        by_seed[s][1][agent] = improvement
+
+    seed_list = sorted(by_seed.keys())
+    n_seeds = len(seed_list)
+    if n_seeds == 0:
+        return []
+
+    agent_ids = sorted({agent for _, ag_dict in by_seed.values() for agent in ag_dict})
+    mean_baseline_cost = sum(by_seed[s][0] for s in seed_list) / n_seeds
+
+    # Point estimates per agent: mean gain over seeds
+    agent_means: dict[int, float] = {}
+    for a in agent_ids:
+        agent_means[a] = sum(by_seed[s][1].get(a, 0.0) for s in seed_list) / n_seeds
+
+    # Overall point estimate epsilon_hat = max over agents of mean gains
+    epsilon_hat = max(agent_means.values()) if agent_means else 0.0
+
+    # Paired seed bootstrap
+    rng = random.Random(seed)
+    boot_eps: list[float] = []
+    boot_agents: dict[int, list[float]] = {a: [] for a in agent_ids}
+
+    for _ in range(resamples):
+        sampled_seeds = [seed_list[rng.randrange(n_seeds)] for _ in range(n_seeds)]
+        sampled_means: dict[int, float] = {}
+        for a in agent_ids:
+            m = sum(by_seed[s][1].get(a, 0.0) for s in sampled_seeds) / n_seeds
+            sampled_means[a] = m
+            boot_agents[a].append(m)
+        boot_eps.append(max(sampled_means.values()) if sampled_means else 0.0)
+
+    tail = (1.0 - confidence) / 2.0
+
+    def _quantile(data: list[float], q: float) -> float:
+        s_data = sorted(data)
+        pos = q * (len(s_data) - 1)
+        low = int(pos)
+        high = min(low + 1, len(s_data) - 1)
+        frac = pos - low
+        return s_data[low] * (1.0 - frac) + s_data[high] * frac
+
+    eps_ci_low = _quantile(boot_eps, tail)
+    eps_ci_high = _quantile(boot_eps, 1.0 - tail)
+
+    rel_eps = (epsilon_hat / mean_baseline_cost) if mean_baseline_cost > 0 else None
+
+    summary: list[dict[str, Any]] = [
+        {
+            "metric": "restricted_empirical_unilateral_deviation_epsilon_hat",
+            "analysis": "restricted empirical unilateral-deviation analysis (nearest-time-only rule)",
+            "deviator_id": "max",
+            "mean": epsilon_hat,
+            "ci95_low": eps_ci_low,
+            "ci95_high": eps_ci_high,
+            "relative_gain": rel_eps,
+            "mean_baseline_cost": mean_baseline_cost,
+            "max_observed": epsilon_hat,
+            "n_seeds": n_seeds,
+            "tested_deviations": len(agent_ids),
+        }
+    ]
+
+    for a in agent_ids:
+        a_mean = agent_means[a]
+        a_low = _quantile(boot_agents[a], tail)
+        a_high = _quantile(boot_agents[a], 1.0 - tail)
+        a_rel = (a_mean / mean_baseline_cost) if mean_baseline_cost > 0 else None
+        summary.append({
+            "metric": f"agent_{a}_unilateral_deviation",
+            "analysis": "restricted empirical unilateral-deviation analysis (nearest-time-only rule)",
+            "deviator_id": str(a),
+            "mean": a_mean,
+            "ci95_low": a_low,
+            "ci95_high": a_high,
+            "relative_gain": a_rel,
+            "mean_baseline_cost": mean_baseline_cost,
+            "max_observed": a_mean,
+            "n_seeds": n_seeds,
+            "tested_deviations": len(agent_ids),
+        })
+
+    return summary
 

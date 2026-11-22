@@ -5,9 +5,7 @@
   "seed_count": 20,
   "bootstrap_resamples": 2000,
   "communication": {
-    "regime": "full",
-    "radius_minutes": 12.0,
-    "packet_loss_probability": 0.25
+    "regime": "full"
   },
   "weight_levels": {
     "alpha": [0.5, 1.0, 2.0],

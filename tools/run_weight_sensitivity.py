@@ -57,14 +57,28 @@ def _source_hashes() -> dict[str, str]:
     return {path.relative_to(PROJECT_ROOT).as_posix(): _sha256(path) for path in paths}
 
 
-def _revision() -> str | None:
+def _git_status() -> tuple[str | None, bool]:
+    revision = None
+    dirty = False
     try:
-        return subprocess.run(
+        rev_res = subprocess.run(
             ["git", "rev-parse", "HEAD"], cwd=PROJECT_ROOT, check=True,
             capture_output=True, text=True,
-        ).stdout.strip()
+        )
+        revision = rev_res.stdout.strip()
+        status_res = subprocess.run(
+            ["git", "status", "--porcelain"], cwd=PROJECT_ROOT, check=True,
+            capture_output=True, text=True,
+        )
+        dirty = bool(status_res.stdout.strip())
     except (OSError, subprocess.CalledProcessError):
-        return None
+        pass
+    return revision, dirty
+
+
+def _revision() -> str | None:
+    rev, _ = _git_status()
+    return rev
 
 
 def _write_csv(path: Path, rows: list[dict[str, Any]]) -> None:
@@ -101,10 +115,8 @@ def run_weight_sensitivity(
         raise ValueError("provide at least one unique seed")
     cells = weight_sweep(base, weight_levels)
     experiment_config = experiment_config or {}
-    communication = experiment_config.get("communication", {})
-    communication_radius = float(communication.get("radius_minutes", 12.0))
-    packet_loss = float(communication.get("packet_loss_probability", 0.25))
     output.mkdir(parents=True, exist_ok=True)
+    rev, is_dirty = _git_status()
     manifest: dict[str, Any] = {
         "created_utc": datetime.now(timezone.utc).isoformat(),
         "experiment": "exp8_weight_sensitivity",
@@ -123,16 +135,15 @@ def run_weight_sensitivity(
         "case_count": len(cells) * len(seed_list) * len(BASE_POLICIES),
         "communication_settings": {
             "regime": "full",
-            "radius_minutes": communication_radius,
-            "packet_loss_probability": packet_loss,
-            "note": "radius and loss defaults are recorded but inactive under full communication",
         },
         "policy_settings": {
             "policies": list(BASE_POLICIES),
             "demand_knowledge": "B1/B2 learned diagnostic only; B3 true-rate oracle; BID learned-rate input",
             "deviation": None,
         },
-        "code_revision_at_run": _revision(),
+        "code_revision_at_run": rev,
+        "git_revision": rev,
+        "git_dirty": is_dirty,
         "source_sha256": _source_hashes(),
         "base_config_sha256": hashlib.sha256(
             json.dumps(asdict(base), sort_keys=True, separators=(",", ":")).encode("utf-8")
@@ -156,8 +167,6 @@ def run_weight_sensitivity(
                     RunSettings(
                         policy=policy,
                         communication="full",
-                        communication_radius_minutes=communication_radius,
-                        packet_loss_probability=packet_loss,
                         oracle_demand=(policy == "B3"),
                         seed=seed,
                         scenario_id=scenario_id,
@@ -227,6 +236,7 @@ def main() -> int:
     parser.add_argument("--seed-start", type=int)
     parser.add_argument("--seed-count", type=int)
     parser.add_argument("--output", type=Path, required=True)
+    parser.add_argument("--allow-dirty", action="store_true", help="allow run on a dirty working tree")
     args = parser.parse_args()
     experiment_config = json.loads(args.experiment_config.read_text(encoding="utf-8"))
     if experiment_config["experiment"] != "exp8_weight_sensitivity":
@@ -239,6 +249,9 @@ def main() -> int:
     seed_count = experiment_config["seed_count"] if args.seed_count is None else args.seed_count
     if seed_count < 1:
         parser.error("--seed-count must be positive")
+    _rev, is_dirty = _git_status()
+    if seed_count >= 20 and is_dirty and not args.allow_dirty:
+        parser.error("refusing to start a final run on a dirty working tree (pass --allow-dirty to override)")
     base_config_path = args.experiment_config.resolve().parent / experiment_config["base_config"]
     base_config = _load_config(base_config_path)
     if asdict(base_config.weights) != experiment_config["fixed_weights"]:
