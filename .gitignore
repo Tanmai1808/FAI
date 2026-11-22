@@ -35,3 +35,4 @@ results/pilot_*
 results/*_test_*
 results/test_*
 results/final_*/
+!results/final_30_seed/

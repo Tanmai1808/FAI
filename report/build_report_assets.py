@@ -301,9 +301,9 @@ def write_proposal_results_table(summary: list[dict[str, str]], target: Path) ->
 def write_weight_sensitivity_table(summary: list[dict[str, str]], target: Path) -> None:
     """Write the independently varied alpha, beta, and gamma outcomes in source order."""
     lines = [
-        r"\begin{center}",
-        r"\scriptsize",
-        r"\captionof{table}{Independent one-factor weight sensitivity. Other weights remain at the default while each listed coefficient varies. Cells show mean [95\% paired-seed bootstrap interval].}",
+        r"\begin{table}[h!]",
+        r"\centering\scriptsize",
+        r"\caption{Independent one-factor weight sensitivity. Other weights remain at the default while each listed coefficient varies. Cells show mean [95\% paired-seed bootstrap interval].}",
         r"\label{tab:weight-sensitivity}",
         r"\setlength{\tabcolsep}{3pt}",
         r"\begin{tabular}{lrrr}",
@@ -321,7 +321,7 @@ def write_weight_sensitivity_table(summary: list[dict[str, str]], target: Path) 
             gap = next((row for row in summary if row["experiment"] == "exp8_weight_sensitivity" and row["level"] == level and row["policy"] == "BID" and row["metric"] == "b3_cost_gap_relative"), None)
             factor_value = level.split("=", 1)[1]
             lines.append(" & ".join((factor, factor_value, interval_cell(service, percent=True), interval_cell(gap, percent=True))) + r" \\")
-    lines.extend([r"\bottomrule", r"\end{tabular}", r"\end{center}"])
+    lines.extend([r"\bottomrule", r"\end{tabular}", r"\end{table}"])
     target.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 
@@ -563,6 +563,9 @@ def write_macros(
         macros.append(macro("FullBIDResponseMinutes", f"{full_resp:.1f}"))
     if full_exp is not None:
         macros.append(macro("FullBIDExpiredPercent", f"{full_exp * 100:.1f}"))
+    full_dup = summary_value("exp4_communication", "full", "BID", "duplicate_rate")
+    if full_dup is not None:
+        macros.append(macro("FullBIDDuplicatePercent", f"{full_dup * 100:.1f}"))
 
     if none_service is not None:
         macros.append(macro("NoneBIDServicePercent", f"{none_service * 100:.1f}"))
@@ -717,6 +720,17 @@ def write_macros(
         macros.append(macro("PooledBThreeTotalCost", f"{sum(_pool_b3) / len(_pool_b3):.1f}"))
     if _pool_bid:
         macros.append(macro("PooledBIDTotalCost", f"{sum(_pool_bid) / len(_pool_bid):.1f}"))
+
+    # --- BID gap to B3 under capacity stress (for abstract) ---
+    _bid_gap_n3 = summary_value("exp1_ambulance_count", "n=3", "BID", "b3_cost_gap_relative")
+    _bid_gap_n10 = summary_value("exp1_ambulance_count", "n=10", "BID", "b3_cost_gap_relative")
+    _bid_gap_10ch = summary_value("exp2_total_demand", "high:10/h", "BID", "b3_cost_gap_relative")
+    if _bid_gap_n3 is not None:
+        macros.append(macro("BIDGapNThreePercent", f"{_bid_gap_n3 * 100:.1f}"))
+    if _bid_gap_n10 is not None:
+        macros.append(macro("BIDGapNTenPercent", f"{_bid_gap_n10 * 100:.1f}"))
+    if _bid_gap_10ch is not None:
+        macros.append(macro("BIDGapTenCallsPercent", f"{_bid_gap_10ch * 100:.1f}"))
 
     # --- RMSE shifting timeseries macros (exp5b) ---
     # Prefer the learning_rmse_timeseries.csv from the supplied run_dir, then fall back

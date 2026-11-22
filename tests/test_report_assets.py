@@ -99,7 +99,7 @@ class ReportAssetsTests(unittest.TestCase):
         self.assertIn("means across 4 paired seeds", rendered)
         self.assertIn("none & 82.5 & 16.6 & 22.1 & 87.8 & 0.0 & 41.1 & 17.5", rendered)
 
-    def test_weight_table_is_nonfloating_to_preserve_caption_order(self) -> None:
+    def test_weight_table_is_proper_float_for_ordered_captions(self) -> None:
         summary = []
         for factor in ("alpha", "beta", "gamma"):
             for value in ("0.5", "1", "2"):
@@ -123,8 +123,9 @@ class ReportAssetsTests(unittest.TestCase):
             write_weight_sensitivity_table(summary, output)
             rendered = output.read_text(encoding="utf-8")
 
-        self.assertIn(r"\captionof{table}", rendered)
-        self.assertNotIn(r"\begin{table}", rendered)
+        self.assertIn(r"\begin{table}", rendered)
+        self.assertIn(r"\caption{", rendered)
+        self.assertNotIn(r"\captionof{table}", rendered)
 
     def test_policy_comparison_table_contains_all_five_policies(self) -> None:
         raw = []

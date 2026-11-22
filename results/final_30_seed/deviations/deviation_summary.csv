@@ -1,0 +1,7 @@
+metric,analysis,deviator_id,mean,ci95_low,ci95_high,relative_gain,mean_baseline_cost,max_observed,n_seeds,tested_deviations
+restricted_empirical_unilateral_deviation_epsilon_hat,restricted empirical unilateral-deviation analysis (nearest-time-only rule),max,6.802892508317078,-8.67415629333098,49.803864515841674,0.0008857444386642966,7680.423620356958,6.802892508317078,30,5
+agent_0_unilateral_deviation,restricted empirical unilateral-deviation analysis (nearest-time-only rule),0,-8.79696289103819,-22.021730218735037,3.3260638149919033,-0.0011453746988280497,7680.423620356958,-8.79696289103819,30,5
+agent_1_unilateral_deviation,restricted empirical unilateral-deviation analysis (nearest-time-only rule),1,6.802892508317078,-17.561096064884364,32.217575992355506,0.0008857444386642966,7680.423620356958,6.802892508317078,30,5
+agent_2_unilateral_deviation,restricted empirical unilateral-deviation analysis (nearest-time-only rule),2,-196.47429132775352,-220.28522921948516,-172.08609360395306,-0.025581178986924438,7680.423620356958,-196.47429132775352,30,5
+agent_3_unilateral_deviation,restricted empirical unilateral-deviation analysis (nearest-time-only rule),3,6.495734519215026,-26.328766882696133,49.644359373054726,0.0008457521147659207,7680.423620356958,6.495734519215026,30,5
+agent_4_unilateral_deviation,restricted empirical unilateral-deviation analysis (nearest-time-only rule),4,-10.230502115345764,-37.08780405649828,13.890408401454293,-0.0013320231566693568,7680.423620356958,-10.230502115345764,30,5

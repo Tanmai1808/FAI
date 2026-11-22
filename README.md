@@ -4,6 +4,16 @@ Multi-Agent Systems course project, IIT Gandhinagar.
 
 **Team:** Lingala Hasini (24110186) · Poladasu Tanmai Manjula (24110261) · Reddyboina Triveni (24110295)
 
+## Screenshots
+
+| Terminal output | 54 unit tests passing |
+|---|---|
+| ![BID simulate output](screenshots/terminal_simulate.png) | ![Tests passing](screenshots/tests_passing.png) |
+
+| Communication regime results (Exp 4) | Report page 1 |
+|---|---|
+| ![Communication service rate](screenshots/communication_service_rate.png) | ![Report page 1](screenshots/report_page1.png) |
+
 ## Overview
 
 Discrete-event simulation of urban EMS fleet dispatch on a 5×5 Manhattan grid. Five dispatch policies are evaluated under four communication regimes, with optional online demand learning.
@@ -30,9 +40,12 @@ tests/                    54 unit and integration tests
 tools/run_weight_sensitivity.py   One-factor α,β,γ sensitivity runner
 report/                   8-page arXiv-style report (main.tex, main.pdf), asset builder, plots
 scripts/run_final.sh      One-command full experiment suite runner
-results/final_30_seed/    Final 30-seed results (pre-computed; DO NOT rerun)
-screenshots/              Generated result figures for reference
+results/final_30_seed/    Final 30-seed results (pre-computed)
+screenshots/              Generated screenshots and result plots
 ```
+
+> **Note:** `results/final_30_seed/incident_outcomes.csv.gz` (~32 MB) is excluded from the repository
+> by `.gitignore`. It is not referenced by any report script and is not needed to reproduce the paper.
 
 ## Installation
 
@@ -73,22 +86,38 @@ Edit `configs/default.json` or pass CLI flags:
 - Communication: `--communication {full,radius-limited,lossy,none}`, `--comm-radius`, `--loss-prob`
 - Weights: `alpha` (1.0), `beta` (8.0), `gamma` (8.0), `rho` (120.0) in `configs/default.json`
 
-## Final Results
+## Reproduce the Paper
 
-The 30-seed final results are already computed in `results/final_30_seed/`. The compiled 8-page report is at `report/main.pdf`.
+The 30-seed results are pre-computed in `results/final_30_seed/`. To regenerate report assets and the PDF from these results:
 
-Do **not** rerun `scripts/run_final.sh` unless you need to reproduce results from scratch (requires ~30-seed compute time).
+```bash
+python report/build_report_assets.py results/final_30_seed \
+  --weight-sensitivity-dir results/final_30_seed/weight_sensitivity \
+  --output-dir report/generated
+tectonic report/main.tex
+```
 
-Key generated figures:
-- `results/final_30_seed/report_plots/exp4_communication_service_rate.png` — BID service across communication regimes
-- `results/final_30_seed/report_plots/exp4b_communication_radius_service_rate.png` — radius sweep
-- `results/final_30_seed/report_plots/exp1_ambulance_count_service_rate.png` — fleet size sweep
-- `results/final_30_seed/report_plots/cost_breakdown_stacked_n7_n10.png` — cost decomposition
+A full rerun of all experiments is optional (~10 min per 30-seed batch on a modern laptop):
 
-Screenshots (generated result plots):
-- `screenshots/communication_sweep.png` — radius sweep service rate
-- `screenshots/policy_comparison.png` — fleet size policy comparison
+```bash
+bash scripts/run_final.sh   # reruns all 3450 policy episodes + 1080 weight-sensitivity runs
+```
 
-> **Note:** This project is CLI-only. Screenshots of terminal execution and the compiled PDF must be captured manually.
-> To capture a terminal screenshot: run `ambulance-dispatch simulate --policy BID --communication full --seed 101 --horizon 600` and screenshot your terminal.
-> To capture the PDF first page: open `report/main.pdf` in any viewer and screenshot page 1.
+| Report item | Generator script | Input results file |
+|---|---|---|
+| Fig. 1 (comm/learning plots) | `report/build_report_assets.py` | `results/final_30_seed/report_plots/exp4_communication_*.png` |
+| Fig. 2 (weight sensitivity plots) | `report/build_report_assets.py` | `results/final_30_seed/report_plots/exp8_weight_sensitivity_*.png` |
+| Table 3 (proposal results) | `report/build_report_assets.py` → `generated/proposal_results_table.tex` | `results/final_30_seed/summary_metrics.csv` |
+| Table 4 (communication outcomes) | `report/build_report_assets.py` → `generated/communication_table.tex` | `results/final_30_seed/summary_metrics.csv` |
+| Table 5 (message counts) | `report/build_report_assets.py` → `generated/message_table.tex` | `results/final_30_seed/raw_results.csv` |
+| Table 6 (weight sensitivity) | `report/build_report_assets.py` → `generated/weight_sensitivity_table.tex` | `results/final_30_seed/weight_sensitivity/summary_metrics.csv` |
+| Table 7 (deviation analysis) | `report/build_report_assets.py` → `generated/deviation_table.tex` | `results/final_30_seed/deviations/deviation_summary.csv` |
+| All macros in text | `report/build_report_assets.py` → `generated/result_macros.tex` | `results/final_30_seed/summary_metrics.csv` |
+
+## Validation
+
+```bash
+python report/validate_results.py results/final_30_seed \
+  --weight-sensitivity-dir results/final_30_seed/weight_sensitivity
+```
+
