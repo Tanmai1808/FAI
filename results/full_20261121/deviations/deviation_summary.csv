@@ -1,2 +1,0 @@
-metric,mean,ci95_low,ci95_high,n_seeds,max_observed,max_observed_all_agents,tested_deviations
-per_seed_max_positive_team_payoff_improvement,42.08684010685393,23.09543450109485,63.25111934580639,20,164.6718026022063,164.6718026022063,5
