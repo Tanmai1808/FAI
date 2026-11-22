@@ -1,0 +1,22 @@
+{
+  "audited_utc": "2026-11-21T00:40:24.197694+00:00",
+  "deviation_run_count": 100,
+  "experiment_families": [
+    "exp1_ambulance_count",
+    "exp2_total_demand",
+    "exp3_demand_pattern",
+    "exp4_communication",
+    "exp5_demand_knowledge",
+    "exp6_criticality_mix",
+    "exp7_weight_tradeoff"
+  ],
+  "matched_scenario_groups": 440,
+  "original_proposal_sha256": "8CECF4051109FE21F1E4EC3AE764C1AB86C27D84A4D26100061878EED3404EF2",
+  "plot_count": 15,
+  "policy_run_count": 1760,
+  "run_dir": "results/full_20261121",
+  "scenario_seed_count": 20,
+  "source_hashes_verified": 17,
+  "status": "passed",
+  "summary_row_count": 1232
+}

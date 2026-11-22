@@ -1,0 +1,24 @@
+{
+  "communication_settings": {
+    "call_signal": "public to all policies; not delivered through peer channel",
+    "lossy_packet_drop_probability": 0.25,
+    "radius_limited_radius_minutes": 12.0,
+    "regime_levels": [
+      "full",
+      "radius-limited",
+      "lossy",
+      "none"
+    ]
+  },
+  "created_utc": "2026-11-20T23:19:16.813608+00:00",
+  "derivation": {
+    "experiment_runner_override": "none; run settings pass policy and communication without radius/loss overrides",
+    "matches_original_run_manifest_source_sha256": true,
+    "source": "src/ambulance_dispatch/simulator.py RunSettings defaults",
+    "source_sha256": "07f258a5d7713f359f5e02ce792742d6b5b8777afdb1cd630b6c96b8ddef822b"
+  },
+  "limitation": "The original seven-family manifest records git_revision as null. Do not infer a historical commit beyond the source hashes it records.",
+  "original_manifest_sha256": "82f30cb208351ae9458e6c5dc22b4d5b621e8432021c6cc53338dc89219683b7",
+  "original_run_git_revision": null,
+  "record_type": "post-run audit addendum; original manifest and result rows are not rewritten"
+}\n
