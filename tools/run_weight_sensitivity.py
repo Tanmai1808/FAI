@@ -203,7 +203,9 @@ def run_weight_sensitivity(
     _write_csv(output / "b3_comparisons.csv", comparisons)
     group_keys = ("experiment", "level", "weight_factor", "policy", "communication", "demand_condition")
     metrics = (
-        "total_cost", "service_rate", "mean_response_minutes", "critical_mean_response_minutes",
+        "total_cost", "service_rate", "expired_rate", "duplicate_rate",
+        "mean_response_minutes", "median_response_minutes", "p90_response_minutes",
+        "critical_mean_response_minutes", "critical_service_rate",
         "mean_coverage", "utilization", "messages_per_incident", "duplicate_incidents", "expired",
         "demand_rmse", "b3_cost_gap_absolute", "b3_cost_gap_relative",
         "b3_service_rate_difference", "b3_coverage_difference",

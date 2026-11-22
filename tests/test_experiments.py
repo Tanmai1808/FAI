@@ -36,7 +36,7 @@ class ExperimentDesignTests(unittest.TestCase):
             build_experiment_cases(base, [1], {"exp8"})
 
     def test_small_real_suite_writes_raw_summary_and_plot_files(self) -> None:
-        base = ScenarioConfig(width=3, height=3, n_ambulances=3, horizon_minutes=60.0, total_rate_per_hour=2.0)
+        base = ScenarioConfig(width=3, height=3, n_ambulances=3, horizon_minutes=60.0, total_rate_per_hour=5.0)
         with tempfile.TemporaryDirectory() as directory:
             root = pathlib.Path(directory)
             project = pathlib.Path(__file__).resolve().parents[1]
@@ -50,6 +50,7 @@ class ExperimentDesignTests(unittest.TestCase):
             )
             self.assertTrue((out / "manifest.json").exists())
             self.assertTrue((out / "raw_results.csv").exists())
+            self.assertTrue((out / "incident_outcomes.csv.gz").exists())
             self.assertTrue((out / "b3_comparisons.csv").exists())
             self.assertTrue((out / "summary_metrics.csv").exists())
             self.assertTrue((out / "plots" / "results_contact_sheet.png").exists())
@@ -69,8 +70,44 @@ class ExperimentDesignTests(unittest.TestCase):
                 "expiration_cost",
                 "dispatch_cost",
                 "total_cost",
+                "median_response_minutes",
+                "p90_response_minutes",
+                "critical_service_rate",
+                "duplicate_commitments",
+                "duplicate_scene_arrivals",
+                "duplicate_rate",
+                "expired_rate",
+                "messages_sent_bid",
+                "messages_delivered_bid",
+                "messages_dropped_bid",
+                "messages_sent_status",
+                "messages_delivered_status",
+                "messages_dropped_status",
+                "messages_sent_rate",
+                "messages_delivered_rate",
+                "messages_dropped_rate",
             ):
                 self.assertTrue(all(field in row for row in rows), f"missing {field} in raw_results.csv")
+
+            import gzip
+            with gzip.open(out / "incident_outcomes.csv.gz", "rt", encoding="utf-8", newline="") as gz_handle:
+                gz_rows = list(csv.DictReader(gz_handle))
+            self.assertGreater(len(gz_rows), 0)
+            expected_fields = [
+                "seed",
+                "policy",
+                "experiment",
+                "level",
+                "incident_id",
+                "criticality",
+                "arrival_time",
+                "deadline",
+                "response_time",
+                "responder_count",
+                "outcome",
+            ]
+            self.assertEqual(list(gz_rows[0].keys()), expected_fields)
+            self.assertTrue(all(r["outcome"] in ("served", "expired") for r in gz_rows))
             with self.assertRaises(FileExistsError):
                 run_experiment_suite(project, out, base, [101], selected={"exp4"})
 

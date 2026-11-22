@@ -32,7 +32,7 @@ The original seven proposal experiment families are in [`results/full_20261121/`
 The final report source and compiled PDF are [report/main.tex](report/main.tex) and [report/main.pdf](report/main.pdf). The report includes CSV-generated results tables, actual experiment plots, discussion, limitations, and the contribution table. Selected plots:
 
 - [Communication and service plot](results/full_20261121/report_plots/exp4_communication_service_rate.png)
-- [Communication and missed-dispatch plot](results/full_20261121/report_plots/exp4_communication_missed_dispatch_rate.png)
+- [Communication and expired-dispatch plot](results/full_20261121/report_plots/exp4_communication_missed_dispatch_rate.png)
 - [Demand-knowledge RMSE plot](results/full_20261121/report_plots/exp5_demand_knowledge_demand_rmse.png)
 - [Independent beta sensitivity plot](results/improvements_20261121/weight_sensitivity/report_plots/exp8_weight_sensitivity_beta_b3_cost_gap_relative.png)
 - [All original report plots](results/full_20261121/report_plots/)
@@ -40,7 +40,7 @@ The final report source and compiled PDF are [report/main.tex](report/main.tex) 
 
 `results_overview.png` is a generated plot collage. The image below is a genuine screenshot of the results plot displayed in the desktop Photos viewer; it is preserved alongside the underlying plot.
 
-![Genuine desktop screenshot of the regenerated communication missed-dispatch plot](results/full_20261121/screenshots/final_communication_plot_capture.jpg)
+![Genuine desktop screenshot of the regenerated communication expired-dispatch plot](results/full_20261121/screenshots/final_communication_plot_capture.jpg)
 
 ![Generated overview of actual experiment plots](results/full_20261121/screenshots/results_overview.png)
 
