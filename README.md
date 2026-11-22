@@ -106,7 +106,7 @@ bash scripts/run_final.sh   # reruns all 3450 policy episodes + 1080 weight-sens
 | Report item | Generator script | Input results file |
 |---|---|---|
 | Fig. 1 (comm/learning plots) | `report/build_report_assets.py` | `results/final_30_seed/report_plots/exp4_communication_*.png` |
-| Fig. 2 (weight sensitivity plots) | `report/build_report_assets.py` | `results/final_30_seed/report_plots/exp8_weight_sensitivity_*.png` |
+| Fig. 2 (weight sensitivity plots) | `report/build_report_assets.py` | `results/final_30_seed/weight_sensitivity/report_plots/exp8_weight_sensitivity_*.png` |
 | Table 3 (proposal results) | `report/build_report_assets.py` → `generated/proposal_results_table.tex` | `results/final_30_seed/summary_metrics.csv` |
 | Table 4 (communication outcomes) | `report/build_report_assets.py` → `generated/communication_table.tex` | `results/final_30_seed/summary_metrics.csv` |
 | Table 5 (message counts) | `report/build_report_assets.py` → `generated/message_table.tex` | `results/final_30_seed/raw_results.csv` |

@@ -111,9 +111,9 @@ For idle ambulances $I_{\mathrm{free}} \subseteq I$ at $\{x_j\}_{j\in I_{\mathrm
 \begin{align}
 c(e, i) &= \alpha K_e T_i^{\mathrm{resp}} + \beta R_i(e) + \gamma D_i(e), \label{eq:dispatch-cost}\\
 R_i(e) &= B_i(e) \sum_{z \ne h_i} \lambda_z(t) L_i(z; I_{\mathrm{free}}), \quad D_i(e) = B_i(e) \lambda_{h_i}(t), \label{eq:terms}\\
-C(\boldsymbol{\pi}) &= \sum_{(e, i) \in \mathcal{D}(\boldsymbol{\pi})} c(e, i) + \rho \sum_{e \in \mathcal{E}_{\mathrm{exp}}} K_e T_{\mathrm{exp}}, \label{eq:total-cost}
+C(\boldsymbol{\pi}) &= \sum_{(e, i) \in \mathcal{D}(\boldsymbol{\pi})} c(e, i) + \rho\,|\mathcal{E}_{\mathrm{exp}}|, \label{eq:total-cost}
 \end{align}
-with default weights $\alpha=1.0, \beta=8.0, \gamma=8.0, \rho=120.0$. $R_i(e)$ measures expected external demand loss caused by removing ambulance $i$ from the idle pool over $B_i(e)$. $D_i(e)$ measures home station vulnerability during absence. Because $R_i(e)$ sums strictly over $z \ne h_i$, external coverage and home demand operate over disjoint zone sets and do not double-count. $\mathcal{E}_{\mathrm{exp}}$ denotes calls that expire unserved before deadline $T_e^{\mathrm{dead}}$, penalized at $\rho K_e T_{\mathrm{exp}}$.
+with default weights $\alpha=1.0, \beta=8.0, \gamma=8.0, \rho=120.0$. $R_i(e)$ measures expected external demand loss caused by removing ambulance $i$ from the idle pool over $B_i(e)$. $D_i(e)$ measures home station vulnerability during absence. Because $R_i(e)$ sums strictly over $z \ne h_i$, external coverage and home demand operate over disjoint zone sets and do not double-count. $\mathcal{E}_{\mathrm{exp}}$ denotes calls that expire unserved before deadline $T_e^{\mathrm{dead}}$, each incurring a fixed penalty $\rho$.
 
 \subsection{Definition 3: Empirical Signed Cost Gap}
 Because B3 is a Hungarian assignment heuristic rather than a certified optimum, the performance comparison is defined as an empirical signed cost gap:
@@ -130,7 +130,7 @@ To isolate the effects of queue ordering, coverage awareness, and communication,
 \item \textbf{B2 (FIFO Weighted Nearest)}: Pending calls are processed in FIFO arrival order, selecting the feasible ambulance minimizing $\alpha K_e T_i^{\mathrm{resp}}$.
 \textit{Mathematical Equivalence to B1}: For any active call $e$, $\alpha K_e > 0$ is a scalar constant common to all candidate ambulances. Therefore, $\operatorname{argmin}_{i} (\alpha K_e T_i^{\mathrm{resp}}) \equiv \operatorname{argmin}_{i} T_i^{\mathrm{resp}}$. B1 and B2 produce mathematically identical dispatch assignments and identical tie-breaking under nearest selection.
 \item \textbf{B2q (Criticality-First Queue Nearest)}: Prioritizes pending calls by criticality first, using sort tuple $(-K_e, t_e, \mathrm{ID}_e)$, assigning the nearest idle ambulance. B2q introduces true criticality differentiation by reordering queue service.
-\item \textbf{B3 (Centralized Hungarian Heuristic)}: Observes global locations and true rates. Computes pairwise costs via Eq.~\eqref{eq:dispatch-cost}, adding dummy unassigned penalties $\rho K_e T_{\mathrm{exp}}$. Solves optimal bipartite matching via the Hungarian algorithm. Post-dispatch, idle units are greedily repositioned along shortest paths to maximize aggregate idle coverage.
+\item \textbf{B3 (Centralized Hungarian Heuristic)}: Observes global locations and true rates. Computes pairwise costs via Eq.~\eqref{eq:dispatch-cost}, adding a fixed dummy unassigned penalty $\rho$ per call. Solves optimal bipartite matching via the Hungarian algorithm. Post-dispatch, idle units are greedily repositioned along shortest paths to maximize aggregate idle coverage.
 \item \textbf{BID (Decentralized Market Bidding)}: Ambulances autonomously compute local bids and coordinate via peer messages.
 \end{itemize}
 
