@@ -167,6 +167,20 @@ Each zone begins at the configured uniform prior `lambda_prior = total_prior_rat
 
 The oracle condition exposes true `lambda_z(t)` to the bidding policy for the run. The learned condition exposes only the local/received estimate. Both conditions receive the same incident task signals, positions/status rules, and scenario tape. Message counts include rate/status/bid messages and are broken down by type; reports include total messages and messages per incident.
 
+### Time series tracking and shifting demand boundary convention
+At every learning-bin boundary, the simulator evaluates demand estimation error and records time series rows in `learning_rmse_timeseries.csv` with fields `(experiment, level, policy, seed, time_minutes, rmse)`.
+
+1. **RMSE averaging convention**: For each agent `i`, root-mean-square error across all `Z` zones is computed as:
+   ```text
+   RMSE_i = sqrt( (1 / Z) * sum_{z=1}^Z (lambda_hat_{i,z} - lambda_z)^2 )
+   ```
+   The reported `rmse` is averaged across all `N` agents:
+   ```text
+   rmse = (1 / N) * sum_{i=1}^N RMSE_i
+   ```
+   For oracle demand runs, `rmse` is zero by construction.
+2. **Boundary convention at hotspot shift**: Under shifting demand (`demand_pattern="shifting"` in `exp3` and `exp5b`), demand rates switch abruptly from an initial hotspot pattern to a secondary hotspot configuration at the scenario midpoint (`horizon_minutes / 2.0`, minute 3000 in a default 6000-minute run). At the exact shift boundary timestamp (minute 3000), the learner closes the bin covering `[2940, 3000)`. Because this bin's observations were generated entirely under the pre-shift regime, the newly updated estimate is compared against the **OLD** rate schedule (`now - 1e-9`). All subsequent bin boundaries (minute 3060, 3120, etc.) evaluate estimates incorporating post-shift observations against the **NEW** rate schedule.
+
 ## 8. Centralized planner and repositioning heuristic
 
 For each pending incident `e` and feasible idle ambulance `i`, B3 constructs the pairwise cost from the same `alpha`, `beta`, `gamma`, `rho`, true `lambda`, global idle set, and expected response/busy times. It adds dummy rows/columns so the Hungarian method can leave ambulances idle or incidents unmatched with the configured miss penalty. It then assigns each incident at most once and each ambulance at most once in that allocation round. This is a centralized **heuristic**: pairwise costs are formed from a common pre-assignment snapshot and do not capture all interaction effects across a whole episode. B3 uses `rho` as the slack cost of leaving a currently pending call unassigned in its one-step Hungarian assignment; this matching penalty is an internal trade-off parameter of the one-step optimizer and is not the same as the actual expiration penalty charged by the simulator when an incident reaches its deadline unresolved. After assignments, B3 greedily moves idle ambulances to maximize true demand-weighted coverage, updating the covered set after each move. Its construction is an implementation choice for a strong comparison, not an optimality proof.

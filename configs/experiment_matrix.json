@@ -12,11 +12,14 @@
       {"id": "exp2", "factor": "total_rate_per_hour", "levels": [2.5, 5.0, 10.0], "policies": ["B1", "B2", "B2q", "B3", "BID"]},
       {"id": "exp3", "factor": "demand_pattern", "levels": ["uniform", "hotspots", "shifting"], "policies": ["B1", "B2", "B3", "BID"]},
       {"id": "exp4", "factor": "communication", "levels": ["full", "radius-limited", "lossy", "none"], "policies": ["B1", "B2", "B3", "BID"]},
+      {"id": "exp4b", "factor": "communication_radius", "levels": ["full", "none", "r=2", "r=4", "r=6", "r=8", "r=12"], "policies": ["BID"]},
+      {"id": "exp4c", "factor": "communication_loss", "levels": ["full", "none", "p=0", "p=0.1", "p=0.25", "p=0.5", "p=0.75", "p=1"], "policies": ["BID"]},
       {"id": "exp5", "factor": "demand_knowledge", "levels": ["learned", "oracle"], "policies": ["B1", "B2", "B3", "BID"]},
+      {"id": "exp5b", "factor": "learning_shifting", "levels": ["learned", "oracle"], "policies": ["BID"]},
       {"id": "exp6", "factor": "criticality_mix", "levels": ["low-heavy", "balanced", "high-heavy"], "policies": ["B1", "B2", "B2q", "B3", "BID"]},
       {"id": "exp7", "factor": "time_coverage_weights", "levels": ["coverage-light", "balanced", "coverage-heavy"], "policies": ["B1", "B2", "B3", "BID"]}
     ],
-    "policy_run_count": 1960,
+    "policy_run_count": 2300,
     "deviation_runs_per_seed": "1 baseline + one time-only deviation for each ambulance"
   }
 }

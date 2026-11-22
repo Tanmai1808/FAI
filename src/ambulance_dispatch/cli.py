@@ -27,7 +27,7 @@ def _parser() -> argparse.ArgumentParser:
     single.add_argument("--pattern", choices=("uniform", "hotspots", "shifting"), default="hotspots")
     single.add_argument("--oracle-demand", action="store_true")
 
-    suite = commands.add_parser("experiments", help="run the seven experiment families")
+    suite = commands.add_parser("experiments", help="run experiment families")
     suite.add_argument("--profile", choices=("quick", "full"), default="quick")
     suite.add_argument("--seeds", type=int, help="number of paired seeds (default: 1 quick, 20 full)")
     suite.add_argument("--seed-start", type=int, default=1000)
@@ -35,7 +35,11 @@ def _parser() -> argparse.ArgumentParser:
     suite.add_argument("--ambulances", type=int, default=5)
     suite.add_argument("--rate", type=float, default=5.0)
     suite.add_argument("--pattern", choices=("uniform", "hotspots", "shifting"), default="hotspots")
-    suite.add_argument("--experiment", choices=tuple(f"exp{i}" for i in range(1, 8)), action="append")
+    suite.add_argument(
+        "--experiment",
+        choices=("exp1", "exp2", "exp3", "exp4", "exp4b", "exp4c", "exp5", "exp5b", "exp6", "exp7"),
+        action="append",
+    )
     suite.add_argument("--output-dir", type=Path)
     suite.add_argument("--bootstrap-resamples", type=int, default=2000)
     return parser

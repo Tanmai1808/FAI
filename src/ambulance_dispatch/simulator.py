@@ -75,6 +75,8 @@ class IncidentState:
 class RunResult:
     policy: str
     communication: str
+    communication_radius_minutes: float
+    packet_loss_probability: float
     demand_knowledge: str
     scenario_id: str
     seed: int
@@ -194,6 +196,7 @@ class Simulator:
         self.dispatch_cost = 0.0
         self.expiration_cost = 0.0
         self.rmse_samples: list[float] = []
+        self.learning_rmse_history: list[tuple[float, float]] = []
         self.message_totals_by_type: Counter[str] = Counter()
 
     @staticmethod
@@ -350,10 +353,12 @@ class Simulator:
                     if message is not None:
                         self.learners[receiver].receive_rate(owner, zone, bin_id, rate)
         if self.settings.oracle_demand:
-            self.rmse_samples.append(0.0)
+            sample_rmse = 0.0
         else:
             errors = [learner.rmse(true_rates) for learner in self.learners.values()]
-            self.rmse_samples.append(sum(errors) / len(errors))
+            sample_rmse = sum(errors) / len(errors)
+        self.rmse_samples.append(sample_rmse)
+        self.learning_rmse_history.append((self.now, sample_rmse))
 
     def _rates_for_agent(self, agent_id: int) -> tuple[float, ...]:
         if self.settings.oracle_demand:
@@ -761,6 +766,8 @@ class Simulator:
         return RunResult(
             policy=self.settings.policy,
             communication=self.settings.communication,
+            communication_radius_minutes=self.settings.communication_radius_minutes,
+            packet_loss_probability=self.settings.packet_loss_probability,
             demand_knowledge="oracle" if self.settings.oracle_demand else "learned",
             scenario_id=self.settings.scenario_id,
             seed=self.settings.seed,
@@ -820,6 +827,12 @@ class Simulator:
                 "outcome": "served" if resp is not None else "expired",
             })
         return rows
+
+    def learning_rmse_timeseries(self) -> list[dict[str, Any]]:
+        return [
+            {"time_minutes": time_min, "rmse": rmse}
+            for time_min, rmse in self.learning_rmse_history
+        ]
 
     def _check_invariants(self) -> None:
         for state in self.states.values():

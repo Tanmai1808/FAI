@@ -29,6 +29,8 @@ class ExperimentCase:
     config: ScenarioConfig
     policy: str
     communication: str = "full"
+    communication_radius_minutes: float = 12.0
+    packet_loss_probability: float = 0.25
     oracle_demand: bool = False
 
     @property
@@ -43,12 +45,25 @@ def _family(
     seeds: Iterable[int],
     policies: tuple[str, ...] = BASE_POLICIES,
     communication: str = "full",
+    communication_radius_minutes: float = 12.0,
+    packet_loss_probability: float = 0.25,
     demand_condition: str = "learned",
 ) -> Iterable[ExperimentCase]:
     for seed in seeds:
         for policy in policies:
             oracle = policy == "B3" or (policy == "BID" and demand_condition == "oracle")
-            yield ExperimentCase(experiment, level, seed, demand_condition, config, policy, communication, oracle)
+            yield ExperimentCase(
+                experiment,
+                level,
+                seed,
+                demand_condition,
+                config,
+                policy,
+                communication,
+                communication_radius_minutes,
+                packet_loss_probability,
+                oracle,
+            )
 
 
 def build_experiment_cases(
@@ -65,12 +80,15 @@ def build_experiment_cases(
         "exp2": "exp2_total_demand",
         "exp3": "exp3_demand_pattern",
         "exp4": "exp4_communication",
+        "exp4b": "exp4b_communication_radius",
+        "exp4c": "exp4c_communication_loss",
         "exp5": "exp5_demand_knowledge",
+        "exp5b": "exp5b_learning_shifting",
         "exp6": "exp6_criticality_mix",
         "exp7": "exp7_weight_tradeoff",
     }
     if selected is not None and not selected.issubset(set(family_names)):
-        raise ValueError("experiment selection must use exp1 through exp7")
+        raise ValueError("experiment selection must use exp1 through exp7, exp4b, exp4c, exp5b")
     selected_families = {family_names[name] for name in selected} if selected is not None else None
     cases: list[ExperimentCase] = []
 
@@ -93,11 +111,45 @@ def build_experiment_cases(
             base,
             communication=regime,
         )
+    # exp4b: radius sweep for BID only (r in {2,4,6,8,12}), with BID full and none reference rows
+    add("exp4b_communication_radius", "full", base, policies=("BID",), communication="full")
+    add("exp4b_communication_radius", "none", base, policies=("BID",), communication="none")
+    for r in (2, 4, 6, 8, 12):
+        add(
+            "exp4b_communication_radius",
+            f"r={r}",
+            base,
+            policies=("BID",),
+            communication="radius-limited",
+            communication_radius_minutes=float(r),
+        )
+    # exp4c: loss sweep for BID only (p in {0,0.1,0.25,0.5,0.75,1.0}), with BID full and none reference rows
+    add("exp4c_communication_loss", "full", base, policies=("BID",), communication="full")
+    add("exp4c_communication_loss", "none", base, policies=("BID",), communication="none")
+    for p in (0.0, 0.1, 0.25, 0.5, 0.75, 1.0):
+        add(
+            "exp4c_communication_loss",
+            f"p={p:g}",
+            base,
+            policies=("BID",),
+            communication="lossy",
+            packet_loss_probability=p,
+        )
     for condition in ("learned", "oracle"):
         add(
             "exp5_demand_knowledge",
             condition,
             base,
+            demand_condition=condition,
+        )
+    # exp5b: demand learning under shifting demand (oracle vs learned BID)
+    shifting_base = replace(base, demand_pattern="shifting")
+    for condition in ("learned", "oracle"):
+        add(
+            "exp5b_learning_shifting",
+            condition,
+            shifting_base,
+            policies=("BID",),
             demand_condition=condition,
         )
     for mix in ("low-heavy", "balanced", "high-heavy"):
@@ -216,7 +268,7 @@ def run_experiment_suite(
         "base_config": _config_dict(base),
         "experiment_count": len({case.experiment for case in cases}),
         "case_count": len(cases),
-        "selected_experiments": sorted(selected) if selected is not None else [f"exp{i}" for i in range(1, 8)],
+        "selected_experiments": sorted(selected) if selected is not None else sorted(family_names.keys()),
         "case_semantics": "one-factor-at-a-time; identical scenario seeds are reused across methods",
     }
     (output / "manifest.json").write_text(json.dumps(manifest, indent=2, sort_keys=True), encoding="utf-8")
@@ -240,12 +292,20 @@ def run_experiment_suite(
     gz_writer = csv.DictWriter(gz_handle, fieldnames=gz_fieldnames)
     gz_writer.writeheader()
 
+    rmse_ts_path = output / "learning_rmse_timeseries.csv"
+    rmse_ts_handle = rmse_ts_path.open("w", newline="", encoding="utf-8")
+    rmse_ts_fieldnames = ["experiment", "level", "policy", "seed", "time_minutes", "rmse"]
+    rmse_ts_writer = csv.DictWriter(rmse_ts_handle, fieldnames=rmse_ts_fieldnames)
+    rmse_ts_writer.writeheader()
+
     raw_rows: list[dict[str, Any]] = []
     total = len(cases)
     for index, case in enumerate(cases, start=1):
         settings = RunSettings(
             policy=case.policy,
             communication=case.communication,
+            communication_radius_minutes=case.communication_radius_minutes,
+            packet_loss_probability=case.packet_loss_probability,
             oracle_demand=case.oracle_demand,
             seed=case.seed,
             scenario_id=case.scenario_id,
@@ -261,6 +321,15 @@ def run_experiment_suite(
                 "experiment": case.experiment,
                 "level": case.level,
                 **item,
+            })
+        for item in sim.learning_rmse_timeseries():
+            rmse_ts_writer.writerow({
+                "experiment": case.experiment,
+                "level": case.level,
+                "policy": case.policy,
+                "seed": case.seed,
+                "time_minutes": f"{item['time_minutes']:.1f}",
+                "rmse": f"{item['rmse']:.6f}",
             })
         row = _row_for_case(case, result, elapsed)
         raw_rows.append(row)
@@ -291,6 +360,7 @@ def run_experiment_suite(
             print(f"[{index}/{total}] {case.experiment} {case.level} {case.policy} seed={case.seed}: {elapsed:.2f}s")
 
     gz_handle.close()
+    rmse_ts_handle.close()
     comparisons = paired_b3_gaps(
         raw_rows,
         match_keys=("experiment", "level", "seed", "demand_condition"),
