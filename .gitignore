@@ -2,8 +2,9 @@
 __pycache__/
 *.py[cod]
 *$py.class
+*.egg-info/
 
-# Environments
+# Virtual environments
 .venv/
 env/
 venv/
@@ -13,10 +14,10 @@ ENV/
 .DS_Store
 Thumbs.db
 
-# Large / regenerable simulation data
+# Large simulation data
 *.csv.gz
 
-# LaTeX build artifacts
+# Tectonic / LaTeX build artifacts
 report/*.aux
 report/*.bbl
 report/*.blg
@@ -24,4 +25,12 @@ report/*.log
 report/*.out
 report/*.toc
 report/*.synctex.gz
-*.egg-info/
+report/*.xdv
+report/*.fls
+report/*.fdb_latexmk
+
+# Intermediate pilot / temporary run outputs
+results/quick_*
+results/pilot_*
+results/*_test_*
+results/test_*
