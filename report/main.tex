@@ -31,7 +31,7 @@
 \renewcommand{\undertitle}{Project Implementation Report}
 \renewcommand{\shorttitle}{Ambulance Dispatch under Limited Communication}
 \captionsetup{font=small,labelfont=bf}
-\graphicspath{{../results/final_30_seed/report_plots/}{../results/final_30_seed/weight_sensitivity/report_plots/}{../results/full_20261121/report_plots/}{../results/improvements_20261121/weight_sensitivity/report_plots/}}
+\graphicspath{{../results/final_30_seed/report_plots/}{../results/final_30_seed/weight_sensitivity/report_plots/}}
 \input{generated/result_macros.tex}
 
 \title{Decentralized Ambulance Dispatch under Limited Communication and Unknown Demand}
@@ -194,7 +194,7 @@ To evaluate whether all-BID forms an empirical $\epsilon$-Nash equilibrium again
 The experimental suite executes \NPolicyRuns{} policy episodes across \NScenarioSeeds{} paired seeds per condition, ensuring identical exogenous arrival streams for all algorithms.
 
 \subsection{Communication Constraints and Degradation}
-Figure~\ref{fig:communication-learning} and Table~\ref{tab:communication-rates} depict fleet performance across communication regimes. Under full communication, BID achieves a service rate of \FullBIDServicePercent\% with a mean response delay of \FullBIDResponseMinutes{} minutes, an expired call rate of \FullBIDExpiredPercent\%, and an empirical signed cost gap of \FullBIDCostGapPercent\% relative to centralized heuristic B3. The radius sweep (Exp 4b) reveals monotone degradation: at $r=2$ min, duplicates reach \RadiusTwoDuplicatePercent\% and service falls to \RadiusTwoServicePercent\%; at $r \ge 8$ duplicates drop to \RadiusEightDuplicatePercent\%, matching full broadcast. The radius-limited condition in Exp 4 uses $r_{\mathrm{comm}}=12$ (default coverage radius), explaining near-full performance (\RadiusLimitedBIDServicePercent\% service, \RadiusLimitedBIDDuplicatePercent\% duplicates). Duplicates arise because each out-of-range agent sees only its own bid and independently commits. Under packet loss ($p_{\mathrm{loss}} = 0.25$), service stays at \LossyBIDServicePercent\% with a \LossyBIDDuplicatePercent\% duplicate rate. Loss-induced duplicates grow monotonically with $p_{\mathrm{loss}}$ (\LossTenDuplicatePercent\% at $p=0.1$, \LossFiftyDuplicatePercent\% at $p=0.5$); at $p_{\mathrm{loss}}=1.0$, service drops to \LossHundredServicePercent\%, identical to the ``none'' regime in all 30 seeds (checked by unit test \texttt{test\_bid\_lossy\_p1\_equals\_bid\_none}).
+Figure~\ref{fig:communication-learning} and Table~\ref{tab:communication-rates} depict fleet performance across communication regimes. Under full communication, BID achieves a service rate of \FullBIDServicePercent\% with a mean response delay of \FullBIDResponseMinutes{} minutes, an expired call rate of \FullBIDExpiredPercent\%, and an empirical signed cost gap of \FullBIDCostGapPercent\% relative to centralized heuristic B3. The radius sweep (Exp 4b) reveals monotone degradation: at $r=2$ min, duplicates reach \RadiusTwoDuplicatePercent\% and service falls to \RadiusTwoServicePercent\%; at $r \ge 8$ duplicates drop to \RadiusEightDuplicatePercent\%, matching full broadcast. The radius-limited condition in Exp 4 uses $r_{\mathrm{comm}}=12$ (default coverage radius), explaining near-full performance (\RadiusLimitedBIDServicePercent\% service, \RadiusLimitedBIDDuplicatePercent\% duplicates). Duplicates arise because each out-of-range agent sees only its own bid and independently commits. Under packet loss ($p_{\mathrm{loss}} = 0.25$), service stays at \LossyBIDServicePercent\% with a \LossyBIDDuplicatePercent\% duplicate rate. Loss-induced duplicates grow monotonically with $p_{\mathrm{loss}}$ (\LossTenDuplicatePercent\% at $p=0.1$, \LossFiftyDuplicatePercent\% at $p=0.5$); at $p_{\mathrm{loss}}=1.0$, service drops to \LossHundredServicePercent\%, identical to the ``none'' regime in all \NScenarioSeeds{} seeds (checked by unit test \texttt{test\_bid\_lossy\_p1\_equals\_bid\_none}).
 
 Under total communication absence (``none''), service rate drops by \FullNoneServiceDifferencePP{} percentage points to \NoneBIDServicePercent\%, mean response time surges to \NoneBIDResponseMinutes{} minutes, expired calls rise to \NoneBIDExpiredPercent\%, and duplicate arrivals reach \NoneBIDDuplicatePercent\%, yielding a \NoneBIDCostGapPercent\% cost penalty over B3.
 
@@ -263,9 +263,9 @@ Table~\ref{tab:contributions} summarizes the division of responsibilities and ta
 \toprule
 Member & Assigned Tasks and Deliverables & Status \\
 \midrule
-Lingala Hasini (24110186) & Problem formulation, BID mechanism, communication regimes, demand learning, experiment analysis, report writing & Equal \\
-Poladasu Tanmai Manjula (24110261) & Problem formulation, simulator core, B1/B2/B2q baselines, experiment analysis, report writing & Equal \\
-Reddyboina Triveni (24110295) & Problem formulation, B3 heuristic, experiment runner, metrics, deviation analysis, report writing & Equal \\
+Lingala Hasini (24110186) & Problem formulation, BID mechanism, communication regimes, demand learning, experiment analysis, report writing & Fulfilled \\
+Poladasu Tanmai Manjula (24110261) & Problem formulation, simulator core, B1/B2/B2q baselines, experiment analysis, report writing & Fulfilled \\
+Reddyboina Triveni (24110295) & Problem formulation, B3 heuristic, experiment runner, metrics, deviation analysis, report writing & Fulfilled \\
 \bottomrule
 \end{tabular}
 \end{table}
