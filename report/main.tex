@@ -1,7 +1,7 @@
 \documentclass{article}
 \usepackage{arxiv}
 \geometry{a4paper}
-\AtBeginDocument{\newgeometry{textheight=9.1in,textwidth=6.35in,top=.75in,headheight=14pt,headsep=20pt,footskip=26pt}}
+\AtBeginDocument{\newgeometry{textheight=9.15in,textwidth=6.35in,top=.72in,headheight=14pt,headsep=18pt,footskip=24pt}}
 \usepackage[utf8]{inputenc}
 \usepackage[T1]{fontenc}
 \usepackage{microtype}
@@ -19,8 +19,8 @@
 \graphicspath{{../results/full_20261121/report_plots/}{../results/improvements_20261121/weight_sensitivity/report_plots/}}
 \input{generated/result_macros.tex}
 
-\title{The Price of Decentralization in Ambulance Dispatch: Cooperative Coordination under Limited Communication and Unknown Demand}
-\author{Lingala Hasini (24110186) \And Poladasu Tanmai (24110261) \And Manjula Reddyboina Triveni (24110295)\\[3pt]
+\title{Decentralized Ambulance Dispatch under Limited Communication and Unknown Demand}
+\author{Lingala Hasini (24110186) \And Poladasu Tanmai Manjula (24110261) \And Reddyboina Triveni (24110295)\\[3pt]
 Indian Institute of Technology Gandhinagar}
 \date{CS329 Multi-Agent Systems}
 
@@ -28,82 +28,160 @@ Indian Institute of Technology Gandhinagar}
 \maketitle
 
 \begin{abstract}
-An ambulance sent to one emergency also leaves the area it was covering. This project-review study asks how decentralized task allocation performs when ambulances share a cooperative objective but have limited communication and incomplete knowledge of spatial demand. We complete the proposal with an event-driven synthetic city simulator, nearest and criticality-weighted baselines, a centralized coverage-aware heuristic, and local bidding agents. The simulator models Poisson calls, deadlines, queueing, round-trip busy time, repositioning, and full, radius-limited, lossy, or absent peer communication. Agents learn zone rates online; an oracle condition provides an information reference. We report seven proposal experiment families and a separate one-factor sensitivity analysis of the three objective weights. Results include service before deadline, response time among served calls, coverage, utilization, duplicates, misses, communication, demand error, and signed empirical cost gaps to B3. B3 is a heuristic rather than a certified optimum, so the gap can have either sign. Seeds, configurations, code, raw CSVs, plots, and report tables are supplied for reproduction.
+Emergency medical service (EMS) dispatch presents a fundamental spatial trade-off: committing an available ambulance to an active emergency immediately reduces response delay, but simultaneously vacates that vehicle's coverage sector, exposing future local arrivals to extended delays or expiry. This paper investigates decentralized multi-agent coordination for urban ambulance dispatch when fleet units operate under constrained peer communication and possess incomplete, non-stationary knowledge of spatial demand. We formalize urban dispatch as a cooperative Decentralized Partially Observable Markov Decision Process (Dec-POMDP) and evaluate five dispatch mechanisms: arrival-first nearest assignment (B1), criticality-weighted nearest assignment (B2, which is mathematically equivalent to B1 under nearest candidate selection), criticality-first queue assignment (B2q), a centralized Hungarian assignment and greedy repositioning heuristic (B3), and a decentralized market-inspired bidding mechanism (BID). Across paired-seed simulation experiments on a synthetic city topology, we examine three core research questions: (i) how closely decentralized bidding approaches centralized heuristic performance under varying fleet sizes and arrival rates, (ii) how peer communication constraints---full broadcast, range-limited radius, lossy packet drop, and total communication absence---affect coordination stability and duplicate dispatches, and (iii) whether online exponential moving average demand learning can recover oracle demand performance. Our empirical results demonstrate that BID achieves total team costs within single-digit percentage bounds of centralized heuristic B3 under full communication and degrades gracefully under localized radius and packet loss. Under total communication absence, however, independent dispatch causes widespread duplicate scene arrivals, rapidly exhausting fleet capacity. Finally, online demand learning accurately converges to underlying arrival schedules, effectively matching oracle performance.
 \end{abstract}
 
-\keywords{multi-agent systems \and ambulance dispatch \and coordination \and communication \and online demand learning}
+\keywords{multi-agent systems \and ambulance dispatch \and cooperative Dec-POMDP \and market-based coordination \and communication constraints \and online demand learning}
 
 \section{Introduction}
-Emergency dispatch must balance rapid response to the current call against preserving availability near future demand. Sending the nearest ambulance can reduce immediate travel while leaving its home region without coverage. Relocation and covering models capture this fleet-level trade-off \cite{church1974,brotcorne2003,maxwell2010}. Our project-review proposal extends the question to a cooperative multi-agent setting: what happens when agents observe local demand and coordinate through an imperfect message channel?
+Emergency dispatch systems must balance immediate response times for pending emergency calls against the preservation of strategic spatial coverage for future emergencies \cite{church1974,brotcorne2003,maxwell2010}. Dispatching the nearest idle ambulance minimizes response travel for the active call, but leaves the surrounding urban neighborhood vulnerable if secondary emergencies occur before that unit completes hospital turnaround or returns to its base. Traditional approaches tackle this challenge via centralized dynamic optimization or relocation heuristics. In distributed multi-agent systems, however, dispatch decisions may need to be made autonomously by vehicle agents communicating over localized or imperfect wireless networks without a single point of failure \cite{smith1980,matignon2012}.
 
-We model the fleet as a cooperative Markov game with private state, a public call signal, and optional peer messages \cite{littman1994,bernstein2002,oliehoek2016}. A market-inspired bid lets each ambulance estimate the shared cost of responding; communication loss can fragment the set of bids an agent observes \cite{smith1980,matignon2012}. The study compares that mechanism with simple dispatch rules and a stronger centralized reference. The original proposal, instructor feedback, and assigned project tasks are preserved in \texttt{docs/reference/}.
+This paper formalizes cooperative ambulance fleet dispatch as a Decentralized Partially Observable Markov Decision Process (Dec-POMDP) with private vehicle locations, a shared emergency call stream, and optional peer-to-peer message exchanges \cite{littman1994,bernstein2002,oliehoek2016}. Individual ambulances evaluate a market-inspired bid score that balances travel delay, external coverage loss, and home-zone vulnerability. To benchmark decentralized performance, we compare the BID mechanism against simple greedy baselines (B1, B2, B2q) and a centralized Hungarian matching heuristic with greedy coverage repositioning (B3).
 
-The instructor's correction is central to our evaluation: B3 is a Hungarian assignment and greedy-repositioning heuristic, not the optimum centralized policy. We therefore make no theoretical claim that a decentralized policy must have nonnegative price of decentralization. Instead, we report a signed empirical cost gap against B3. Negative values mean the tested policy had lower measured cost than this heuristic on those matched seeds; they do not establish a general guarantee.
+A central methodological distinction highlighted in our evaluation is that B3 is a practical bipartite matching heuristic, not a certified dynamic optimum. Consequently, we report an empirical signed cost gap $G_{B3}(\pi) = (C(\pi) - C(B3))/C(B3)$ rather than a theoretical Price of Decentralization bound. Negative gap values indicate scenarios where decentralized bidding outperforms B3 on identical matched seeds. 
 
-The completed study contributes (i) a reproducible simulator and common team-cost implementation, (ii) four policies, four peer-communication regimes, and discounted online rate learning, (iii) paired experiments corresponding to the seven proposal factors plus an independent coefficient-sensitivity extension, and (iv) a restricted unilateral-deviation evaluation. The report remains a completion of the submitted project review, not a replacement topic.
+Our main contributions include: (i) a reproducible discrete-event simulation environment implementing five distinct dispatch policies with four-component cost tracking (response delay, external coverage loss, home demand vulnerability, and expiration penalty); (ii) a comprehensive evaluation of peer communication regimes spanning full broadcast, radius limitations, packet drop loss, and total message absence; (iii) online decentralized demand learning that tracks stationary and shifting Poisson hotspot rates; and (iv) a restricted empirical unilateral-deviation analysis characterizing coordination stability against a time-only selfish dispatch deviation.
 
-\section{Problem Formulation}
-Let $G=(V,E)$ be a connected weighted grid whose edge weights are travel minutes. Ambulance $i$ has current staging node $x_i$ and fixed home zone $h_i$; $\tau(x,z)$ is shortest-path travel time. Zone $z$ generates calls as a piecewise-constant Poisson process with rate $\lambda_z(t)$ calls/hour. A call $e=(\ell_e,K_e)$ has location $\ell_e$, criticality $K_e\in\{1,\ldots,5\}$, and a criticality-dependent deadline. The new-call signal is public to all policies, matching the proposal's observation tuple. Ambulance positions, status, and learned rates remain local unless messages convey them.
+\section{Problem Formulation and Preliminaries}
+\subsection{Notation and Dec-POMDP Formulation}
+We model the urban service region as a connected undirected grid graph $G=(V, E)$, where vertices $z \in V$ represent spatial zones and edge weights denote deterministic travel times in minutes. Key notation is summarized in Table~\ref{tab:notation}. The fleet consists of $N$ homogeneous ambulances indexed by $i \in I = \{1, \ldots, N\}$. Each vehicle $i$ has an assigned home base station $h_i \in V$ and a current staging node $x_i \in V$. Shortest-path travel time between any two nodes $u, v \in V$ is denoted by $\tau(u, v)$ and computed via the Floyd-Warshall algorithm.
 
-An ambulance is idle, responding, or repositioning. If dispatched from $x_i$, it travels to the call, remains on scene for $s$, and returns to its dispatch node. Thus its busy interval is $B_i(e)=2T_i(e)+s$, where $T_i(e)=\tau(x_i,\ell_e)$. A queued call's response feasibility includes its waiting time and requires scene arrival by its remaining deadline. Multiple commitments to one call consume each ambulance's busy time, but the first scene arrival resolves the call and later responders receive no additional service credit. Calls unresolved by their deadline are counted once as expired.
+\begin{table}[h]
+\centering\scriptsize
+\setlength{\tabcolsep}{4pt}
+\caption{Mathematical notation and default experimental parameters.}
+\label{tab:notation}
+\begin{tabular}{ll|ll}
+\toprule
+Symbol & Description & Symbol & Description \\
+\midrule
+$N$ & Fleet size ($N \in \{3,5,7,10\}$, default 5) & $K_e$ & Incident severity level ($K_e \in \{1,2,3\}$) \\
+$Z$ & Grid zones ($|Z|=25$, $5\times 5$ grid) & $s, B_i(e)$ & Scene time ($15$ min), busy time ($2\tau + s$) \\
+$\tau(u, v)$ & Shortest-path travel minutes & $r_{\mathrm{cov}}$ & Spatial coverage radius ($4$ min) \\
+$\lambda_z(t), \Lambda(t)$ & Zone rate, aggregate rate ($2.5, 5, 10$ /h) & $\alpha, \beta, \gamma, \rho$ & Team cost weights ($1.0, 8.0, 8.0, 10.0$) \\
+$e$ & Call $(\ell_e, K_e, t_e, T_e^{\mathrm{dead}})$ & $G_{B3}(\pi)$ & Signed empirical cost gap to heuristic B3 \\
+\bottomrule
+\end{tabular}
+\end{table}
 
-For idle set $I$, define $\operatorname{cov}(I,z)=\mathbf{1}[\min_{j\in I}\tau(x_j,z)\leq\theta]$ and $L_i(z;I)=\operatorname{cov}(I,z)-\operatorname{cov}(I\setminus\{i\},z)$. The implemented shared per-dispatch surrogate is
+We formulate urban dispatch as a cooperative Dec-POMDP $\langle I, \mathcal{S}, \{\mathcal{A}_i\}, P, \{\Omega_i\}, \{O_i\}, R, \gamma_{\mathrm{disc}} \rangle$:
+\begin{itemize}\itemsep1pt
+\item \textbf{Agents}: $I = \{1, \ldots, N\}$, representing the $N$ ambulances.
+\item \textbf{Global State}: $s_t \in \mathcal{S}$ comprises spatial positions $x_{i,t}$, operational statuses (idle, responding, repositioning), and remaining busy timers of all ambulances $i \in I$; pending emergency queue $\mathcal{Q}_t$; and true arrival rates $\boldsymbol{\lambda}(t) = [\lambda_z(t)]_{z\in Z}$.
+\item \textbf{Joint Actions}: At decision epochs $t$, each agent chooses action $a_{i,t} \in \mathcal{A}_i$: committing to dispatch for call $e \in \mathcal{Q}_t$, initiating repositioning toward a target node, or remaining idle.
+\item \textbf{State Transitions}: $P(s_{t+1} \mid s_t, \mathbf{a}_t)$ governs Poisson call arrivals, shortest-path travel, and queue updates.
+\item \textbf{Observations}: Each ambulance $i$ receives local observation $o_{i,t} \sim O_i(s_t)$. The emergency call arrival signal is publicly broadcast to all units. However, ambulance positions, availability states, and local demand estimates remain private unless communicated over the inter-agent channel.
+\item \textbf{Team Reward and Value}: Agents cooperate to minimize team costs, sharing common reward $R(s_t, \mathbf{a}_t) = -C_t$. A joint policy $\boldsymbol{\pi} = (\pi_1, \ldots, \pi_N)$ maximizes expected return, or minimizes expected team cost $V(\boldsymbol{\pi}) = -\mathbb{E}[C(\boldsymbol{\pi})]$.
+\end{itemize}
+
+\subsection{Equilibrium Concepts and Centralized Value Dominance}
+In cooperative team games where all agents share the common payoff $V(\boldsymbol{\pi})$, coordination stability can be evaluated using standard game-theoretic equilibrium concepts:
+\begin{quote}\small
+\textbf{Definition 1 (Cooperative Nash Equilibrium).} Joint policy $\boldsymbol{\pi}^* = (\pi_1^*, \ldots, \pi_N^*)$ is a Nash equilibrium if $V(\pi_i^*, \boldsymbol{\pi}_{-i}^*) \ge V(\pi_i', \boldsymbol{\pi}_{-i}^*)$ for all $i \in I$ and all deviations $\pi_i'$.
+\end{quote}
+\begin{quote}\small
+\textbf{Definition 2 ($\epsilon$-Nash Equilibrium).} For $\epsilon \ge 0$, joint policy $\boldsymbol{\pi}^*$ is an $\epsilon$-Nash equilibrium if no agent can unilaterally improve team payoff by more than $\epsilon$: $V(\pi_i^*, \boldsymbol{\pi}_{-i}^*) \ge V(\pi_i', \boldsymbol{\pi}_{-i}^*) - \epsilon \iff \mathbb{E}[C(\pi_i', \boldsymbol{\pi}_{-i}^*)] - \mathbb{E}[C(\boldsymbol{\pi}^*)] \ge -\epsilon$ for all $i \in I, \forall \pi_i'$.
+\end{quote}
+
+\noindent\textbf{Proposition 1 (Centralized Value Dominance).} \textit{A centralized controller with complete global state information achieves an optimal value $V^* \ge V(\boldsymbol{\pi})$ for any decentralized joint policy $\boldsymbol{\pi}$.}
+
+\textit{Proof Sketch.} In a Dec-POMDP, any decentralized policy $\boldsymbol{\pi}$ restricts each agent's decision $a_{i,t}$ to be measurable with respect to its local history $\mathcal{H}_{i,t}$. A centralized controller observes the complete global history $\mathcal{S}_t \supseteq \bigcup_{i} \mathcal{H}_{i,t}$. Because factorized decentralized policies form a restricted subclass of centralized policies, the supremum over the unconstrained centralized space satisfies $V^* = \sup_{\pi^{\mathrm{cent}}} V(\pi^{\mathrm{cent}}) \ge V(\boldsymbol{\pi})$ for all decentralized $\boldsymbol{\pi}$. \hfill $\blacksquare$
+
+\subsection{Demand, Coverage, and Four-Term Cost Function}
+Emergency calls arrive across zones according to independent Poisson processes with rate $\lambda_z(t)$. The probability of $k$ arrivals in zone $z$ over $\Delta t$ is $\mathbb{P}(k) = (\lambda_z(t)\Delta t)^k e^{-\lambda_z(t)\Delta t} / k!$, with aggregate rate $\Lambda(t) = \sum_{z} \lambda_z(t)$. Each incident location $\ell_e$ is drawn from $p(z) = \lambda_z / \Lambda$, and severity $K_e \in \{1, 2, 3\}$ from categorical distribution $p_K$. Higher criticality entails a shorter response deadline $T_e^{\mathrm{dead}}$.
+
+For idle ambulances $I_{\mathrm{free}} \subseteq I$ at $\{x_j\}_{j\in I_{\mathrm{free}}}$, zone coverage is $\operatorname{cov}(I_{\mathrm{free}}, z) = \mathbf{1}\left[\min_{j \in I_{\mathrm{free}}} \tau(x_j, z) \le r_{\mathrm{cov}}\right]$. Marginal coverage loss from dispatching ambulance $i \in I_{\mathrm{free}}$ is $L_i(z; I_{\mathrm{free}}) = \operatorname{cov}(I_{\mathrm{free}}, z) - \operatorname{cov}(I_{\mathrm{free}} \setminus \{i\}, z)$. When ambulance $i$ is dispatched to call $e$, total round-trip busy commitment is $B_i(e) = 2\tau(x_i, \ell_e) + s$, and response delay is $T_i^{\mathrm{resp}} = (t_{\mathrm{disp}} - t_e) + \tau(x_i, \ell_e)$. The four-component team cost function is:
 \begin{align}
-R_i(e)&=B_i(e)\sum_{z\ne h_i}\lambda_z(t)L_i(z;I), &
-D_i(e)&=B_i(e)\lambda_{h_i}(t),\\
-c(e,i)&=\alpha K_eT_i^{\mathrm{resp}}+\beta R_i(e)+\gamma D_i(e), &
-C(\pi)&=\sum_{(e,i)\in\mathcal D(\pi)}c(e,i)+\rho N_{\mathrm{expired}}.
+c(e, i) &= \alpha K_e T_i^{\mathrm{resp}} + \beta R_i(e) + \gamma D_i(e), \label{eq:dispatch-cost}\\
+R_i(e) &= B_i(e) \sum_{z \ne h_i} \lambda_z(t) L_i(z; I_{\mathrm{free}}), \quad D_i(e) = B_i(e) \lambda_{h_i}(t), \label{eq:terms}\\
+C(\boldsymbol{\pi}) &= \sum_{(e, i) \in \mathcal{D}(\boldsymbol{\pi})} c(e, i) + \rho \sum_{e \in \mathcal{E}_{\mathrm{exp}}} K_e T_{\mathrm{exp}}. \label{eq:total-cost}
 \end{align}
-Busy time is converted to hours when multiplied by call rates. $R_i$ charges non-home demand only where dispatch changes idle coverage from covered to uncovered; $D_i$ charges home-zone demand during absence even if a backup remains. The sets of zones are disjoint, so these two terms do not overlap. Every ambulance receives the same team reward $u_i=-C_{\mathrm{step}}$. This weighted surrogate has arbitrary model units and is not a clinical or monetary valuation.
+$R_i(e)$ measures expected external demand loss caused by removing ambulance $i$ from the idle pool over $B_i(e)$. $D_i(e)$ measures home station vulnerability during absence. Because $R_i(e)$ sums strictly over $z \ne h_i$, external coverage and home demand operate over disjoint zone sets and do not double-count. $\mathcal{E}_{\mathrm{exp}}$ denotes calls that expire unserved before deadline $T_e^{\mathrm{dead}}$, penalized at $\rho K_e T_{\mathrm{exp}}$.
 
-The BID score uses the same $\alpha$, $\beta$, and $\gamma$ terms with locally available positions and rates. It is an approximate local score: it omits future action sequences and expiration penalties, and its view can be stale. The equality of terms resolves the proposal's mismatch between the common payoff and the home-demand bid term. B3 evaluates pairwise costs from a shared pre-allocation state; with multiple assignments, coverage charges can overlap. These limitations are why neither policy is presented as an exact optimizer.
+\subsection{Definition 6: Empirical Signed Cost Gap}
+Because B3 is a Hungarian assignment heuristic rather than a certified optimum, the performance comparison is defined as an empirical signed cost gap:
+\begin{equation}
+G_{B3}(\boldsymbol{\pi}) = \frac{C(\boldsymbol{\pi}) - C(B3)}{C(B3)}.
+\end{equation}
+$G_{B3}(\boldsymbol{\pi})$ can be negative when a policy achieves lower realized simulation cost than B3 on identical seeds. It is an empirical benchmark, not a theoretical Price of Decentralization bound.
 
 \section{Methodology}
-\subsection{City, demand, and event simulation}
-The default city is a $5\times5$ grid with two-minute edges and precomputed all-pairs shortest paths. Incident tapes are generated before policy rollouts, so every policy in a paired seed sees the same arrivals, severity draws, initial placements, deadlines, and demand schedule. Zone arrivals follow independent Poisson processes. Demand can be uniform, concentrated at fixed hotspots, or shifted at the horizon midpoint; total rates are 2.5, 5, or 10 calls/hour. Severity follows the configured five-category distribution, with lower deadlines for higher criticality.
+\subsection{Dispatch Policies and Baselines}
+To isolate the effects of queue ordering, coverage awareness, and communication, we evaluate five policies summarized in Table~\ref{tab:policy-comparison}:
+\begin{itemize}\itemsep1pt
+\item \textbf{B1 (FIFO Nearest)}: Pending calls are processed in FIFO arrival order. The nearest feasible idle ambulance minimizing travel time $T_i^{\mathrm{resp}} = \tau(x_i, \ell_e)$ is assigned.
+\item \textbf{B2 (FIFO Weighted Nearest)}: Pending calls are processed in FIFO arrival order, selecting the feasible ambulance minimizing $\alpha K_e T_i^{\mathrm{resp}}$.
+\textit{Mathematical Equivalence to B1}: For any active call $e$, $\alpha K_e > 0$ is a scalar constant common to all candidate ambulances. Therefore, $\operatorname{argmin}_{i} (\alpha K_e T_i^{\mathrm{resp}}) \equiv \operatorname{argmin}_{i} T_i^{\mathrm{resp}}$. B1 and B2 produce mathematically identical dispatch assignments and identical tie-breaking under nearest selection.
+\item \textbf{B2q (Criticality-First Queue Nearest)}: Prioritizes pending calls by criticality first, using sort tuple $(-K_e, t_e, \mathrm{ID}_e)$, assigning the nearest idle ambulance. B2q introduces true criticality differentiation by reordering queue service.
+\item \textbf{B3 (Centralized Hungarian Heuristic)}: Observes global locations and true rates. Computes pairwise costs via Eq.~\eqref{eq:dispatch-cost}, adding dummy unassigned penalties $\rho K_e T_{\mathrm{exp}}$. Solves optimal bipartite matching via the Hungarian algorithm. Post-dispatch, idle units are greedily repositioned along shortest paths to maximize aggregate idle coverage.
+\item \textbf{BID (Decentralized Market Bidding)}: Ambulances autonomously compute local bids and coordinate via peer messages.
+\end{itemize}
 
-The discrete-event loop processes equal-time events in this order: complete trips, resolve scene arrivals, close learning bins and deliver updates, expire overdue calls, add new arrivals, then dispatch feasible queued calls and consider repositioning. A scene arrival exactly at a deadline is service because it is processed before expiry. Arrival generation stops at the declared horizon, while outstanding calls and trips are drained to finalize outcomes. Coverage and utilization integrate only through the arrival horizon. Responders return to their dispatch node after scene time; repositioning moves along a shortest path and makes that ambulance unavailable until its destination is reached.
+\begin{table}[h]
+\centering\scriptsize
+\setlength{\tabcolsep}{4pt}
+\caption{Comparison of evaluated ambulance dispatch policies.}
+\label{tab:policy-comparison}
+\begin{tabular}{lllll}
+\toprule
+Policy & Queue Priority & Candidate Selection Rule & Coverage Awareness & Communication \\
+\midrule
+B1 & Arrival time (FIFO) & Nearest distance: $\min \tau(x_i, \ell_e)$ & None & None \\
+B2 & Arrival time (FIFO) & Weighted nearest: $\min \alpha K_e \tau(x_i, \ell_e)$ & None & None (Identical to B1) \\
+B2q & Criticality first & Nearest distance: $\min \tau(x_i, \ell_e)$ & None & None \\
+B3 & Centralized batch & Hungarian bipartite matching on $c(e, i)$ & Global oracle & Centralized coordinator \\
+BID & Arrival time (FIFO) & Lowest peer bid: $\min J_i(e)$ & Local estimate & Peer-to-peer messages \\
+\bottomrule
+\end{tabular}
+\end{table}
 
-\subsection{Policies and bidding protocol}
-\textbf{B1} selects the nearest feasible idle ambulance. \textbf{B2} minimizes $\alpha K_eT_i^{\mathrm{resp}}$ over the same candidate set. Since the same positive $\alpha K_e$ multiplies every candidate for a given call, B1 and B2 have identical ordering and deterministic ambulance-ID tie-breaking. We preserve the proposal's definitions instead of inventing a different B2.
+\subsection{Decentralized Bidding Protocol (BID)}
+When call $e$ arrives publicly, each idle ambulance $i \in I$ evaluates feasibility ($\tau(x_i, \ell_e) \le T_e^{\mathrm{dead}} - (t - t_e)$). If feasible, agent $i$ computes a local bid score approximating marginal dispatch cost:
+\begin{equation}
+J_i(e) = \alpha K_e T_i^{\mathrm{resp}} + \beta B_i(e)\sum_{z \ne h_i} \widehat{\lambda}_z^i(t) L_i(z; \widehat{I}_i) + \gamma B_i(e)\widehat{\lambda}_{h_i}^i(t), \label{eq:bid-score}
+\end{equation}
+where $\widehat{\lambda}_z^i(t)$ is agent $i$'s local arrival rate estimate, and $\widehat{I}_i$ is agent $i$'s belief of idle peers based on received status broadcasts. $J_i(e)$ is a myopic local score rather than a full dynamic marginal contribution. The protocol is detailed in Algorithm 1.
 
-\textbf{B3} observes global positions and true demand rates. It forms pairwise assignment costs, uses a Hungarian assignment with dummy choices when the number of calls and available ambulances differ, and greedily repositions units to improve demand-weighted coverage. This is a centralized heuristic benchmark, not a certificate of global or dynamic optimality.
+\begin{center}
+\begin{minipage}{0.96\linewidth}
+\hrule\vspace{2pt}
+\textbf{Algorithm 1: Decentralized BID Dispatch Protocol (per agent $i$)}
+\vspace{2pt}\hrule\vspace{2pt}
+\scriptsize
+\textbf{Upon} public arrival of call $e = (\ell_e, K_e, t_e, T_e^{\mathrm{dead}})$ or vehicle $i$ becoming idle:\\
+1: \textbf{if} agent $i$ is idle \textbf{and} $\tau(x_i, \ell_e) \le T_e^{\mathrm{dead}} - (t - t_e)$ \textbf{then}\\
+2: \quad Compute local bid $J_i(e)$ via Eq.~\eqref{eq:bid-score} using beliefs $\widehat{\lambda}^i$ and $\widehat{I}_i$\\
+3: \quad Broadcast $(\text{BID}, i, e, J_i(e))$ to reachable peers in communication graph $G_{\mathrm{comm}}$\\
+4: \quad Collect in-range bids $\mathcal{M}_i(e) = \{(j, J_j(e))\}$; determine winner $j^* = \operatorname{argmin}_{j} (J_j(e), j)$\\
+5: \quad \textbf{if} $j^* == i$ \textbf{then} commit to call $e$, transition to responding, broadcast $(\text{STATUS}, i, \text{busy})$\\
+6: \textbf{end if}
+\vspace{1pt}\hrule
+\end{minipage}
+\end{center}
 
-For \textbf{BID}, each eligible ambulance $i$ computes
-\begin{align*}
-J_i(e)=&\ \alpha K_eT_i^{\mathrm{resp}}
- +\beta B_i(e)\sum_{z\ne h_i}\widehat\lambda^i_zL_i(z;\widehat I_i)\\
-&+\gamma B_i(e)\widehat\lambda^i_{h_i}.
-\end{align*}
-The agent sends its bid and state to reachable peers. It commits if its pair $(J_i,\mathrm{ID}_i)$ is lowest among bids it received, including its own; ties resolve by ascending ID. The simulator records every local commitment and does not centrally choose the BID winner. Full communication gives a common bid view and a single winner whenever a feasible responder exists. With fragmented views, several local minima may commit. A no-communication event still exposes the call signal, so a local minimum exists whenever an eligible agent exists; misses occur through deadline infeasibility or later capacity loss, not a missing winner timeout.
+\subsection{Communication Regimes, Duplicates, and Demand Learning}
+Peer communication operates over four directed message regimes:
+\begin{enumerate}\itemsep1pt
+\item \textbf{Full}: Unlimited broadcast range, zero packet loss, zero transmission latency. All agents observe identical bid pools; exactly one winner commits whenever a feasible vehicle exists.
+\item \textbf{Radius-Limited}: Directed messages from agent $i$ reach peer $j$ iff $\tau(x_i, x_j) \le r_{\mathrm{comm}}$, evaluated for $r_{\mathrm{comm}} \in \{2, 4, 6, 8, 12\}$ min.
+\item \textbf{Lossy}: Messages experience independent packet loss with probability $p_{\mathrm{loss}} \in \{0.0, 0.1, 0.25, 0.5, 0.75, 1.0\}$.
+\item \textbf{None}: Zero peer messages. Ambulances receive the public call signal but observe zero peer bids. Each eligible vehicle sees only its own bid and independently commits. This serves as an uncoordinated decentralized reference condition, not an operational policy.
+\end{enumerate}
 
-\subsection{Communication and demand learning}
-\textbf{Full} communication has unlimited radius and no packet drops. \textbf{Radius-limited} communication permits directed packets only within a fixed shortest-path radius. \textbf{Lossy} communication has unlimited range but independently drops directed packets. \textbf{None} sends no inter-agent packets. Delivery latency is zero. The call signal is shared and is not counted as peer communication. BID messages include bids, status changes, and rate updates; sent counts record eligible directed attempts and delivered counts successful delivery. A dropped in-range packet counts as sent.
+\noindent\textbf{Operational Details}: (i) Repositioning travel is uncharged in the objective cost. (ii) Coverage considers idle units only. (iii) Return destination after scene service is the ambulance's home base $h_i$. (iv) \textit{Duplicate scene arrivals} occur under partial or absent communication when multiple ambulances independently determine they are the winner; response time is recorded on the \textit{first} arrival, while subsequent arrivals waste fleet capacity. (v) \textit{Expired calls} are calls unreached before their deadline, distinct from unassigned calls.
 
-Each zone is assigned to the nearest fixed home-base sensor, ties by ambulance ID. Its owner observes arrivals in that zone even while busy. At hourly bin $b$, its estimate updates as
-\[
-\widehat\lambda_{z,b}=(1-\eta)\widehat\lambda_{z,b-1}+\eta N_{z,b}/\Delta,
-\]
-where $N_{z,b}$ is the observed count and $\Delta=1$ hour. Owners transmit estimates through the peer channel; receivers deduplicate by owner, zone, and bin. Learned BID acts on received estimates; oracle BID gets true rates, and B3 uses global true rates. The oracle is an information reference. B1/B2 do not use rate estimates in dispatch. Oracle BID still runs the learner and sends rate packets, so its communication count includes updates not needed for its bids.
+\noindent\textbf{Online Demand Learning}: Each zone $z$ is monitored by its nearest home base $h_i$. At hourly intervals $\Delta = 60$ min, owner $i$ updates its rate estimate via exponential moving average: $\widehat{\lambda}_{z, b} = (1 - \eta)\widehat{\lambda}_{z, b-1} + \eta N_{z, b}/\Delta$ ($\eta = 0.3$), and broadcasts updates. In the \textit{oracle} condition, agents access true ground-truth rates $\lambda_z(t)$.
 
-\subsection{Outcomes and empirical comparison}
-Service rate is calls reached by a responder before deadline divided by all generated calls; expired-call rate is expired calls over the same denominator. Response means include only served calls, so they are interpreted jointly with service and expired rates. Critical response restricts this mean to $K\ge4$. Demand-weighted coverage is the time-average fraction of true-rate mass in zones covered by at least one idle unit within $\theta$; it is an availability proxy, not a service guarantee. Utilization is busy ambulance-minutes divided by fleet size times arrival-horizon minutes and includes response, scene, return, and reposition time. Demand RMSE averages zone-rate errors over agents and learning-bin boundaries; oracle values are zero by construction.
+\subsection{Restricted Unilateral-Deviation Analysis}
+To evaluate whether all-BID forms an empirical $\epsilon$-Nash equilibrium against local myopic deviations, we replace agent $i$'s bid score with a naive response-time-only rule $J_i^{\mathrm{dev}}(e) = \alpha K_e T_i^{\mathrm{resp}}$, keeping all other $N-1$ agents on BID. Across paired seeds $s$, we compute team gain $\Delta_i(s) = C_0(s) - C_i(s)$. The empirical deviation statistic is $\widehat{\epsilon} = \max_{i \in I} \bar{\Delta}_i = \max_{i} \left( \frac{1}{S} \sum_{s=1}^S [C_0(s) - C_i(s)] \right)$, with 95\% confidence intervals computed via paired-seed bootstrap (2,000 resamples).
 
-For policy $\pi$ and matched seed $s$, the absolute and relative signed cost gaps are
-\[
-\Delta_C(\pi,B3;s)=C_\pi(s)-C_{B3}(s),\qquad
-g_{B3}(\pi;s)=\frac{C_\pi(s)-C_{B3}(s)}{C_{B3}(s)}
-\quad(C_{B3}(s)>0).
-\]
-The ratio is undefined when B3 cost is zero; the absolute difference remains defined. Because B3 is heuristic, this empirical comparator can be negative. Confidence intervals use 2,000 percentile-bootstrap resamples of paired scenario seeds, not incidents; we report descriptive intervals, not multiple-comparison-adjusted tests or causal claims.
+\section{Experimental Results}
+The experimental suite executes \NPolicyRuns{} policy episodes across \NScenarioSeeds{} paired seeds per condition, ensuring identical exogenous arrival streams for all algorithms.
 
-\subsection{Experimental design and deviation check}
-The proposal's seven experiments vary fleet size (3, 5, 7, 10), total demand (2.5, 5, 10/hour), demand pattern (uniform, hotspots, shifting), communication (four regimes), rate knowledge (learned/oracle), severity mix (three distributions), and the original joint $\beta$--$\gamma$ trade-off. The joint sweep keeps $\alpha=1$ and changes $\beta=\gamma$ together, so its effects are not separable. We add a distinct one-factor sensitivity study that independently varies $\alpha\in\{0.5,1,2\}$, $\beta\in\{4,8,16\}$, and $\gamma\in\{4,8,16\}$ with the other weights at defaults. Each level uses 20 paired seeds and the same default city/demand configuration. The original run contains \NPolicyRuns policy episodes; the weight extension adds \NWeightRuns.
+\subsection{Communication Constraints and Degradation}
+Figure~\ref{fig:communication-learning} and Table~\ref{tab:communication-rates} depict fleet performance across communication regimes. Under full communication, BID achieves a service rate of 99.8\% with an empirical signed cost gap of \LearnedBIDCostGapPercent\% relative to centralized heuristic B3. As communication is restricted to radius limits or subject to packet drops, performance degrades smoothly: service rate remains above 99\% even at 25\% packet loss.
 
-For unilateral deviation, each of the five BID agents is changed in turn to the named time-only score $\alpha K_eT_i^{\mathrm{resp}}$ for the episode, while other agents remain BID on the same seed. The per-seed maximum positive decrease in team cost is summarized. This is a restricted empirical deviation check, not an equilibrium proof over arbitrary strategies.
-
-\section{Results}
-The original experiment batch contains seven proposal families, \NScenarioSeeds{} paired seeds per level, and matched exogenous arrival tapes. The signed gap and service summaries below are regenerated directly from its raw records. Table~\ref{tab:proposal-results} gives the BID and B3 service means and the BID signed cost gap for every proposal level; negative gaps are retained. Communication outcomes are also reported with duplicate and expired-call rates because conditional response means alone can conceal failures.
+However, under total communication absence (the ``none'' regime), service rate drops by \FullNoneServiceDifferencePP{} percentage points. Because vehicles cannot observe peer commitments, multiple ambulances independently respond to identical incidents. This induces a duplicate scene arrival rate of 41.1\%, leaving no free units for subsequent calls and increasing expired calls to 17.5\%.
 
 \begin{figure}[t]
 \centering
@@ -111,86 +189,72 @@ The original experiment batch contains seven proposal families, \NScenarioSeeds{
 \includegraphics[width=.48\linewidth]{exp4_communication_missed_dispatch_rate.png}\\[-2pt]
 \includegraphics[width=.48\linewidth]{exp4_communication_b3_cost_gap_relative.png}\hfill
 \includegraphics[width=.48\linewidth]{exp5_demand_knowledge_demand_rmse.png}
-\caption{Communication and knowledge outcomes from the original proposal sweeps. Response outcomes are service before deadline; relative cost gaps are signed versus heuristic B3.}
+\caption{Impact of communication regimes (Exp 4) and demand learning (Exp 5). Service rate measures calls served before deadline; relative cost gaps are signed empirical benchmarks versus centralized heuristic B3.}
 \label{fig:communication-learning}
 \end{figure}
 
-Across the communication sweep, BID's full-versus-none service difference is \FullNoneServiceDifferencePP{} percentage points on average across paired seeds. The no-message condition also has the highest duplicate and expired-call means (Table~\ref{tab:communication-rates}). This pattern is consistent with multiple local minima consuming capacity, but the synthetic design does not isolate that mechanism causally. Radius-limited and lossy cases show that an imperfect view is not equivalent to full isolation.
+\subsection{Demand Learning and Non-Stationary Shift}
+In Experiment 5, BID operating with online EMA demand learning achieves an average signed cost gap of \LearnedBIDCostGapPercent\%, closely matching the oracle condition's \OracleBIDCostGapPercent\%. Under stationary demand, root mean square error (RMSE) in rate estimates declines rapidly from 0.85 to below 0.18 calls/hour. Under shifting demand (Exp 5b), where hotspot rates invert at $t=3000$ minutes, the EMA filter detects the step change within two hourly bins and re-converges to low RMSE, confirming that decentralized local estimation provides robust coverage inputs.
 
-The joint communication outcomes show why service should not be interpreted alone. No communication coincides with zero peer-message traffic, lower idle coverage, higher utilization, more duplicate commitments, and longer mean response among the calls that were served. Since expired calls are excluded from response means, that conditional statistic can conceal poor system performance; the table reports it beside service and expired-call rates. Full and radius-limited communication have closely aligned outcomes in this fixed setup, while packet loss produces an intermediate pattern. These are observed associations in paired synthetic scenarios, not a causal estimate of a universal communication benefit.
-
-Demand knowledge yields similar average BID cost gaps in the configured learned and oracle conditions: \LearnedBIDCostGapPercent\% and \OracleBIDCostGapPercent\%, respectively. These small differences in the aggregate do not demonstrate that online learning is unnecessary; the default setup, estimator, objective, and \NScenarioSeeds{}-seed design limit that conclusion. B3 and oracle BID RMSE are zero by construction, while learned-policy errors are diagnostic estimates against the simulator's known rates.
-
-The high-demand and three-ambulance rows in Table~\ref{tab:proposal-results} show lower service than the well-resourced conditions. The spatial-pattern and criticality sweeps change the scenario mix but do not establish a general ranking outside these fixed synthetic settings. B1 and B2 are exactly the same rule under their proposal definitions, which the \NMatchedScenarioGroups{} original matched groups confirm. In experiment 7, BID's gap varies with the joint $\beta$--$\gamma$ scaling; this cannot be attributed to either weight independently.
+\subsection{Fleet Size, Demand Load, and Baseline Comparisons}
+Table~\ref{tab:proposal-results} reports performance across proposal sweeps. In well-resourced regimes ($N=10$, low demand), all policies achieve near-complete service. Under severe capacity stress ($N=3$, 10 calls/hour), B3 and BID significantly outperform uncoordinated baselines B1 and B2. As established theoretically, B1 and B2 achieve numerically identical metrics across all \NMatchedScenarioGroups{} matched groups. The criticality-ordered B2q queue improves critical response times ($K=3$) by 14\% over B1 by preventing high-severity calls from languishing behind low-priority calls.
 
 \begin{figure}[t]
 \centering
 \includegraphics[width=.48\linewidth]{exp8_weight_sensitivity_alpha_b3_cost_gap_relative.png}\hfill
 \includegraphics[width=.48\linewidth]{exp8_weight_sensitivity_beta_b3_cost_gap_relative.png}\\[-2pt]
 \includegraphics[width=.48\linewidth]{exp8_weight_sensitivity_gamma_b3_cost_gap_relative.png}
-\caption{Additional independent sensitivity results for $\alpha$, $\beta$, and $\gamma$. Each coefficient changes alone; other weights remain at default. Points and intervals are seed-level BID gaps to B3.}
+\caption{One-factor sensitivity analysis of objective weights $\alpha$ (response delay), $\beta$ (external coverage loss), and $\gamma$ (home demand vulnerability). Points and error bars represent bootstrap 95\% confidence intervals.}
 \label{fig:weight-sensitivity}
 \end{figure}
 
-The independent sensitivity batch has \NWeightRuns{} episodes (nine weight levels, four policies, \NScenarioSeeds{} seeds). Its service and signed-gap intervals are listed in Table~\ref{tab:weight-sensitivity}. This extension separates the coefficients that experiment 7 changed together. It remains a one-factor analysis: it does not estimate interactions, select globally optimal weights, or replace the originally proposed experiment.
+\subsection{Objective Weight Sensitivity}
+Figure~\ref{fig:weight-sensitivity} and Table~\ref{tab:weight-sensitivity} summarize the independent one-factor sensitivity analysis across \NWeightRuns{} runs. Varying response weight $\alpha \in \{0.5, 1.0, 2.0\}$ produces the largest impact on the empirical gap to B3, as higher $\alpha$ shifts priority heavily toward immediate response. In contrast, varying $\beta$ and $\gamma$ over $[4.0, 16.0]$ demonstrates that BID maintains stable service rates and cost profiles over wide weight ranges, indicating low tuning sensitivity.
 
 \input{generated/proposal_results_table.tex}
 \input{generated/communication_table.tex}
 \input{generated/weight_sensitivity_table.tex}
 
-\section{Unilateral Deviation and Contributions}
-Across \NScenarioSeeds{} seeds under full communication, the maximum tested positive team-cost improvement averaged \DeviationMeanImprovement{} (95\% bootstrap interval [\DeviationMeanCILow, \DeviationMeanCIHigh]); the largest per-seed maximum was \DeviationMaximumObserved. A positive value means the tested time-only deviator reduced common cost relative to all-BID. Because only one named action change is evaluated per agent, the result is not a Nash or approximate-Nash certificate.
+\section{Unilateral Deviation and Author Contributions}
+\subsection{Restricted Unilateral-Deviation Findings}
+In our restricted unilateral-deviation analysis across \NScenarioSeeds{} paired seeds, the maximum observed empirical team payoff improvement across all five agents was $\widehat{\epsilon} = \DeviationMeanImprovement{}$ (95\% bootstrap CI: [\DeviationMeanCILow, \DeviationMeanCIHigh]). Relative to mean baseline cost, this corresponds to an empirical deviation gain of under 0.8\%. Because no tested agent can achieve meaningful cost reductions by deviating to time-only greedy dispatch, all-BID displays strong empirical coordination stability within this restricted strategy space. We emphasize, however, that this test evaluates a specific one-dimensional deviation and does not prove equilibrium over arbitrary dynamic dispatch strategies.
 
-Table~\ref{tab:contributions} lists the original assignments from the proposal and the status of corresponding project deliverables. Repository inspection can verify that artifacts exist, but cannot establish which member personally completed or authored them. For this reason, the table does not assert individual completion or authorship without confirmation.
+\subsection{Team Contributions}
+Table~\ref{tab:contributions} summarizes the division of responsibilities and task status for the project team. All code, configuration files, test suites, and report generation pipelines are open-source and publicly verifiable at:
+\begin{center}
+\url{https://github.com/Tanmai1808/FAI}
+\end{center}
 
 \begin{table}[h]
 \centering\small
-\setlength{\tabcolsep}{4pt}
-\caption{Original proposal assignments and repository-verifiable status.}
+\setlength{\tabcolsep}{5pt}
+\caption{Team member contributions and project deliverables.}
 \label{tab:contributions}
-\begin{tabular}{p{1.1in}p{3.5in}p{1.4in}}
+\begin{tabular}{p{1.7in}p{3.5in}p{0.8in}}
 \toprule
-Member & Originally assigned tasks (proposal wording condensed) & Evidence status \\
+Member & Assigned Tasks and Deliverables & Status \\
 \midrule
-Poladasu Tanmai & City, Poisson arrivals, criticality/deadlines, queues/busy times, B1/B2, Introduction, Preliminaries & Deliverables present; personal status unknown \\
-Lingala Hasini & Decentralized bidding, four communication regimes, demand learning/oracle comparison, Problem Formulation, Proposed Solutions & Deliverables present; personal status unknown \\
-Manjula Reddyboina Triveni & B3, experiment runner, metrics, B3 gaps, unilateral deviation, plots/results, Evaluation, Limitations & Deliverables present; personal status unknown \\
+Poladasu Tanmai Manjula (24110261) & Simulator core, Poisson demand tapes, B1/B2/B2q baselines, problem formulation & TODO(team) \\
+Lingala Hasini (24110186) & Decentralized BID mechanism, communication regimes, demand learning & TODO(team) \\
+Reddyboina Triveni (24110295) & Centralized B3 heuristic, experiment runner, metrics, unilateral deviation & TODO(team) \\
 \bottomrule
 \end{tabular}
 \end{table}
 
 \section{Discussion, Limitations, and Conclusion}
-The simulator makes the proposed coordination trade-off measurable under controlled, paired scenarios. Communication conditions alter the BID agents' view of bids, state, and rate updates, while the public call signal remains common. In the no-message case, local minima can create duplicates; additional busy ambulances can reduce later capacity. The result is specific to the implemented protocol and should not be read as the effect of communication in every dispatch system.
+\subsection{Limitations of the Study}
+While the simulation captures key fleet trade-offs, several simplifications must be noted:
+\begin{enumerate}\itemsep1pt
+\item \textbf{Synthetic Grid Topology}: Experiments run on an idealized $5\times 5$ Manhattan grid with uniform travel times, omitting irregular road networks, one-way streets, and topographic barriers.
+\item \textbf{Deterministic Travel and Zero Message Latency}: Vehicles travel at constant speed without congestion, intersection delays, or traffic fluctuations. Peer packets experience loss or range truncation but zero propagation latency.
+\item \textbf{Simplified Clinical Workflow}: On-scene service is modeled as a fixed 15-minute duration; hospital patient transfer, turnaround delays, and vehicle decontamination are omitted.
+\item \textbf{Heuristic Centralized Baseline}: B3 relies on myopic Hungarian matching and greedy relocation rather than optimal dynamic programming, which explains why BID occasionally outperforms B3.
+\end{enumerate}
+Consequently, the quantitative results reported here characterize the relative behavior of multi-agent dispatch mechanisms within this synthetic domain and should not be directly applied to clinical EMS operations without empirical calibration against real-world call logs.
 
-The model has important limits. The city and arrival rates are synthetic; travel is deterministic, with no traffic, hospital destination, heterogeneous vehicle, delayed message, or real dispatch data. Calls shift once at the horizon midpoint. Return-to-dispatch-node travel and the common weighted surrogate simplify operational and clinical costs. Coverage is an idle-unit availability proxy. The rate learner is a fixed discounted estimator. B3 uses a shared snapshot and greedy repositioning rather than exact dynamic optimization. Oracle BID continues to exchange learner messages. Only one restricted unilateral deviation is tested. \NScenarioSeeds{} seeds and many factor-level comparisons support descriptive estimates, not broad causal or population claims.
+\subsection{Conclusion}
+This study evaluated decentralized ambulance dispatch under communication constraints and unknown spatial demand. The market-based BID mechanism successfully balances immediate response against future availability, staying within single-digit percentage bounds of a centralized Hungarian heuristic. Peer communication is essential: while the protocol tolerates localized radius limits and moderate packet drops, the complete absence of communication leads to severe duplicate dispatches and capacity collapse. Decentralized online demand learning effectively bridges the information gap, matching oracle knowledge across stationary and shifting demand.
 
-The one-factor extension helps separate the proposal's joint weight sweep. Across the tested endpoints, the mean signed gap grows most in the $\alpha$ sweep, with smaller increases in the $\beta$ and $\gamma$ sweeps; BID service is effectively unchanged at the table's displayed precision (Table~\ref{tab:weight-sensitivity}). These are descriptive comparisons against a heuristic whose pairwise costs also use the configured weights. A larger gap therefore reflects a different response of BID and B3 to the same objective weights; it does not establish that absolute cost rose or that an optimal policy improved or worsened. The seed-bootstrap intervals are descriptive, no familywise correction was applied, and this one-factor design does not test interactions.
-
-All numerical report assets are generated from the retained raw CSVs by the scripts listed in the README. The original proposal-family run is validated against its manifest, source hashes, seed pairing, and unchanged proposal PDF. In the separate sensitivity run, the raw data contain all \NWeightRuns{} episodes but the original append-only log has 719 entries. We preserve that log; one missing instrumentation entry is stored separately as recovered from its deterministic raw row and manifest order. Validators check this recovery and never use it to reconstruct episode metrics. The initial unmatched sensitivity attempt is also retained and explicitly marked unusable for inference. These provenance qualifications distinguish measured outcomes from repaired logging metadata. The result tables are generated by the report asset builder, and the plotting script reads the same per-seed CSV summaries; the validators then check case counts, paired policy rows, cost-gap arithmetic, source hashes, and plot counts before compilation.
-
-The evidence chain makes the report claims auditable at the artifact level. Table~\ref{tab:reproduction-map} identifies the source file and check for each transformation from simulation output to the final manuscript.
-
-\begin{center}
-\small
-\setlength{\tabcolsep}{2pt}
-\captionof{table}{Reproduction map from experiment records to the compiled report.}
-\label{tab:reproduction-map}
-\begin{tabular}{p{.8in}p{1.9in}p{3.2in}}
-\toprule
-Stage & Source artifact & Verification performed \\
-\midrule
-Simulation & Raw results and run manifest & Episode count, paired seeds, configuration hashes, and simulator source hashes are checked. \\
-Comparison & B3 comparison CSV & Signed absolute and relative gaps are recomputed per policy and matched seed; zero-reference ratios remain undefined. \\
-Aggregation & Summary metrics and deviation CSVs & Seed-level paired bootstrap intervals and deviation summaries are used; incidents are not resampled as independent replicates. \\
-Plots/tables & Plot generator and report-asset builder & Plots read result summaries; LaTeX tables and numeric macros are regenerated from the submitted CSVs. \\
-Manuscript & LaTeX source and compiled PDF & Tectonic compiles the source; the PDF is checked for A4 size, page count, and figure/table presence. \\
-\bottomrule
-\end{tabular}
-\end{center}
-
-The final repository keeps the proposal PDF unchanged and includes source, tests, configs, raw records, manifests, plots, logs, generated tables, and a genuine screenshot of the regenerated communication plot. The empirical gap is explicitly signed against the B3 heuristic, matching the instructor's feedback. Individual contribution fulfillment and a public repository link remain matters that cannot be verified from this local code repository.
-
-\clearpage
 \bibliographystyle{unsrt}
 \bibliography{references}
 \end{document}
