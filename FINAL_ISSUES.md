@@ -1,0 +1,20 @@
+# Final issues and external confirmations
+
+The local simulator, experiments, report source, eight-page PDF, screenshot, and reproducibility validators are present. The items below are intentionally left open because available evidence or the user's no-publish instruction prevents a truthful completion claim.
+
+## Submission items requiring an external action or confirmation
+
+1. **Public repository link — outstanding by instruction.** The project has no Git remote and has not been pushed. The final guidelines require a working repository link, while the user explicitly instructed that the repository not be published yet. The local project is ready for review, but this requirement cannot be satisfied until publication is authorized and a remote URL is actually established.
+2. **Individual contribution fulfillment — unverified.** The original proposal's three members and assignments are listed in the report. Repository files show that corresponding deliverables exist, but cannot prove who authored them or whether each person personally fulfilled their assignment. The report states this uncertainty rather than claiming completion. The group must confirm member-level status.
+3. **Official arXiv style — no universal house template identified.** The report uses the included MIT-licensed community `arxiv.sty` preprint style. arXiv's official submission guidance describes processing author-supplied TeX and requiring review of the processed PDF; it does not prescribe one universal manuscript class. The current PDF is an arXiv-style manuscript, not an official arXiv-produced paper or an official universal class. If the instructor intended a specific class file, that exact file was not supplied in the workspace.
+
+## Provenance and inference limitations disclosed in the submission
+
+4. **Original run metadata.** The original seven-family manifest has `git_revision: null` and did not record communication defaults. Its history was not rewritten; source-derived defaults are in `results/full_20261121/run_metadata_addendum.json`. This limits reconstruction of the exact historical checkout from the manifest alone.
+5. **Sensitivity instrumentation log.** The corrected sensitivity run has all 720 raw episode rows but 719 original append-only log entries. One separately marked entry is reconstructed from its deterministic raw row and manifest order. The original log is unchanged, and the recovered entry is not used in outcome calculations. Both validators check the provenance split.
+6. **Inference scope.** Results use synthetic demand/travel and paired-seed descriptive bootstrap intervals. The many factor comparisons are not familywise-adjusted; no causal or population-wide claim is made. B3 is a heuristic comparator, and the unilateral-deviation check tests only the named time-only deviation.
+7. **Clean-clone reproduction.** README commands are present and unit tests/result validators pass in this workspace, but a clean clone could not be tested because there is no published remote. Full original and sensitivity outcome batches were not rerun during this final documentation/PDF audit; their frozen raw data are hash-checked/validated, and no simulator or metric implementation changed in this final audit.
+8. **Local commit.** No commit has been created from the audit work. The user asked to see proposed repository contents, Git status, and exclusions first; the working tree is therefore left uncommitted for that review. Nothing has been pushed.
+9. **Source-document identifiers.** The retained feedback image includes the instructor's name, institutional email, and staff identifier; the proposal/report include the three project members' names and IDs. They were retained as required project-source/contribution evidence. No credentials matched the repository scan. Review/redact those identifiers before any later public release if that is not intended.
+
+The original proposal PDF remains unchanged. The historical proposal may contain the earlier theoretical claim corrected in the completed report; it is retained as source material and must not be mistaken for the final analysis.

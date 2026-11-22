@@ -1,0 +1,24 @@
+{
+  "width": 5,
+  "height": 5,
+  "edge_minutes": 2.0,
+  "n_ambulances": 5,
+  "horizon_minutes": 6000.0,
+  "total_rate_per_hour": 5.0,
+  "demand_pattern": "hotspots",
+  "severity_probabilities": [0.35, 0.25, 0.2, 0.13, 0.07],
+  "deadlines_minutes": [60.0, 45.0, 30.0, 20.0, 15.0],
+  "on_scene_minutes": 20.0,
+  "coverage_radius_minutes": 8.0,
+  "learning_eta": 0.25,
+  "learning_bin_minutes": 60.0,
+  "prior_total_rate_per_hour": 5.0,
+  "status_ttl_minutes": 120.0,
+  "reposition_epsilon": 0.01,
+  "weights": {
+    "alpha": 1.0,
+    "beta": 8.0,
+    "gamma": 8.0,
+    "rho": 120.0
+  }
+}

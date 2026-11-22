@@ -1,0 +1,31 @@
+{
+  "experiment": "exp8_weight_sensitivity",
+  "base_config": "default.json",
+  "seed_start": 1000,
+  "seed_count": 20,
+  "bootstrap_resamples": 2000,
+  "communication": {
+    "regime": "full",
+    "radius_minutes": 12.0,
+    "packet_loss_probability": 0.25
+  },
+  "weight_levels": {
+    "alpha": [0.5, 1.0, 2.0],
+    "beta": [4.0, 8.0, 16.0],
+    "gamma": [4.0, 8.0, 16.0]
+  },
+  "fixed_weights": {
+    "alpha": 1.0,
+    "beta": 8.0,
+    "gamma": 8.0,
+    "rho": 120.0
+  },
+  "policies": ["B1", "B2", "B3", "BID"],
+  "demand_knowledge": {
+    "B1": "learned diagnostic only; not used by the dispatch rule",
+    "B2": "learned diagnostic only; not used by the dispatch rule",
+    "B3": "true-rate oracle",
+    "BID": "learned rates"
+  },
+  "analysis_unit": "scenario seed; bootstrap resamples matched seeds, not incidents"
+}

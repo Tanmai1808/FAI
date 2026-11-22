@@ -1,0 +1,23 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ambulance-dispatch-mas"
+version = "0.1.0"
+description = "Reproducible synthetic study of decentralized ambulance dispatch"
+requires-python = ">=3.10"
+dependencies = ["Pillow>=10"]
+
+[project.optional-dependencies]
+plots = ["Pillow>=10"]
+dev = ["pytest>=8"]
+
+[project.scripts]
+ambulance-dispatch = "ambulance_dispatch.cli:main"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
