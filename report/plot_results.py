@@ -423,14 +423,17 @@ def chart_communication_sweeps(raw: list[dict[str, str]], output_dir: Path) -> l
 def chart_rmse_timeseries(rmse_ts_path: Path, output: Path) -> bool:
     """RMSE-over-time figure for exp5b shifting demand with vertical line at t=3000."""
     if not rmse_ts_path.exists():
-        return False
+        raise FileNotFoundError(f"RMSE timeseries file not found: {rmse_ts_path}")
     rows = read_csv(rmse_ts_path)
     if not rows:
-        return False
+        raise ValueError(f"RMSE timeseries file is empty: {rmse_ts_path}")
 
-    exp5b_rows = [r for r in rows if r.get("experiment") in ("exp5b_shifting_demand", "exp5_demand_knowledge")]
+    exp5b_rows = [
+        r for r in rows
+        if r.get("experiment") == "exp5b_learning_shifting" and r.get("policy") == "BID"
+    ]
     if not exp5b_rows:
-        exp5b_rows = rows
+        raise ValueError(f"No rows found with experiment='exp5b_learning_shifting' and policy='BID' in {rmse_ts_path}")
 
     by_minute_learned: dict[float, list[float]] = defaultdict(list)
     by_minute_oracle: dict[float, list[float]] = defaultdict(list)
@@ -438,18 +441,20 @@ def chart_rmse_timeseries(rmse_ts_path: Path, output: Path) -> bool:
     for r in exp5b_rows:
         t = float(r["time_minutes"])
         rmse = float(r["rmse"])
-        lvl = r.get("level", "learned")
-        if lvl == "oracle" or r.get("policy_oracle_input") in ("True", "true", "1"):
+        lvl = r.get("level")
+        if lvl == "oracle":
             by_minute_oracle[t].append(rmse)
-        else:
+        elif lvl == "learned":
             by_minute_learned[t].append(rmse)
+        else:
+            raise ValueError(f"Unexpected level '{lvl}' in exp5b_learning_shifting row: {r}")
 
     if not by_minute_learned and not by_minute_oracle:
-        return False
+        raise ValueError(f"Neither learned nor oracle data found for exp5b_learning_shifting BID in {rmse_ts_path}")
 
     times = sorted(set(by_minute_learned.keys()) | set(by_minute_oracle.keys()))
     if not times:
-        return False
+        raise ValueError(f"No times found in exp5b_learning_shifting BID in {rmse_ts_path}")
 
     learned_means = [(t, sum(by_minute_learned[t]) / len(by_minute_learned[t])) for t in times if t in by_minute_learned]
     oracle_means = [(t, sum(by_minute_oracle[t]) / len(by_minute_oracle[t])) for t in times if t in by_minute_oracle]

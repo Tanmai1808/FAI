@@ -281,11 +281,11 @@ class ReportAssetsTests(unittest.TestCase):
             csv_path = Path(temporary_dir) / "learning_rmse_timeseries.csv"
             csv_path.write_text(
                 "experiment,level,policy,seed,time_minutes,rmse\n"
-                "exp5b_shifting_demand,learned,BID,101,0.0,0.85\n"
-                "exp5b_shifting_demand,learned,BID,101,1500.0,0.22\n"
-                "exp5b_shifting_demand,learned,BID,101,3000.0,0.48\n"
-                "exp5b_shifting_demand,learned,BID,101,4500.0,0.18\n"
-                "exp5b_shifting_demand,learned,BID,101,6000.0,0.15\n",
+                "exp5b_learning_shifting,learned,BID,101,0.0,0.85\n"
+                "exp5b_learning_shifting,learned,BID,101,1500.0,0.22\n"
+                "exp5b_learning_shifting,learned,BID,101,3000.0,0.48\n"
+                "exp5b_learning_shifting,learned,BID,101,4500.0,0.18\n"
+                "exp5b_learning_shifting,learned,BID,101,6000.0,0.15\n",
                 encoding="utf-8",
             )
             out_png = Path(temporary_dir) / "exp5b_learning_rmse_timeseries.png"

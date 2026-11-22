@@ -97,7 +97,7 @@ python report/build_report_assets.py results/final_30_seed \
 tectonic report/main.tex
 ```
 
-A full rerun of all experiments is optional (~10 min per 30-seed batch on a modern laptop):
+A full rerun of all experiments is optional (~5-6 min (about 4 min for the main run plus 1.2 min for weight sensitivity, per the manifests)):
 
 ```bash
 bash scripts/run_final.sh   # reruns all 3450 policy episodes + 1080 weight-sensitivity runs
