@@ -46,7 +46,10 @@ def audit(run_dir: Path, project_root: Path) -> dict[str, Any]:
     require(len(comparisons) == len(raw), "paired comparison CSV row count differs from raw data")
     require(bool(summaries), "summary metrics file is empty")
     require(len(deviations) == len(manifest.get("seed_list", [])) * int(manifest["base_config"]["n_ambulances"]), "deviation run count is incomplete")
-    require(len(deviation_summary) == 1, "expected one restricted deviation summary row")
+    require(
+        len(deviation_summary) in (1, 1 + int(manifest["base_config"]["n_ambulances"])),
+        "expected restricted deviation summary rows (overall and per-agent)",
+    )
 
     expected_source = manifest.get("source_sha256", {})
     for relative, expected_hash in expected_source.items():

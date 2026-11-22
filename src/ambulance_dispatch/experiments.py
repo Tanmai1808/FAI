@@ -16,7 +16,12 @@ from pathlib import Path
 from typing import Any, Iterable
 
 from .config import ScenarioConfig, Weights, severity_mix
-from .metrics import bootstrap_mean_interval, paired_b3_gaps, summarize_by
+from .metrics import (
+    bootstrap_mean_interval,
+    compute_unilateral_deviation_statistics,
+    paired_b3_gaps,
+    summarize_by,
+)
 from .simulator import BASE_POLICIES, POLICIES, RunResult, RunSettings, Simulator, simulate
 
 
@@ -428,21 +433,20 @@ def run_unilateral_deviations(
         "git_revision": _git_revision(source_root),
         "source_sha256": _source_manifest(source_root),
         "seeds": seed_list,
+        "analysis": "restricted empirical unilateral-deviation analysis (nearest-time-only rule)",
         "deviation_rule": "one ambulance substitutes the alpha*K*response time-only bid; all other agents use BID",
         "communication": communication,
-        "epsilon_interpretation": "maximum positive team-payoff improvement over this tested deviation set; not an equilibrium proof",
+        "epsilon_interpretation": "maximum over agents of mean team-payoff improvement; not an equilibrium proof",
         "config": _config_dict(config),
     }
     (output / "manifest.json").write_text(json.dumps(manifest, indent=2, sort_keys=True), encoding="utf-8")
     case_rows: list[dict[str, Any]] = []
-    seed_max: list[float] = []
     log_path = output / "run.log.jsonl"
     for seed in seed_list:
         baseline = simulate(
             config,
             RunSettings("BID", communication, seed=seed, scenario_id="unilateral-deviation"),
         )
-        improvements = []
         for agent_id in range(config.n_ambulances):
             started = time.perf_counter()
             deviation = simulate(
@@ -458,7 +462,6 @@ def run_unilateral_deviations(
             )
             elapsed = time.perf_counter() - started
             improvement = baseline.total_cost - deviation.total_cost
-            improvements.append(improvement)
             case_rows.append(
                 {
                     "seed": seed,
@@ -488,22 +491,12 @@ def run_unilateral_deviations(
                     )
                     + "\n"
                 )
-        seed_max.append(max(0.0, max(improvements, default=0.0)))
-    mean, low, high, n = bootstrap_mean_interval(seed_max, resamples=bootstrap_resamples, seed=7341)
-    summary = [
-        {
-            "metric": "per_seed_max_positive_team_payoff_improvement",
-            "mean": mean,
-            "ci95_low": low,
-            "ci95_high": high,
-            "n_seeds": n,
-            "max_observed": max(seed_max, default=0.0),
-            "max_observed_all_agents": max(
-                (float(row["team_payoff_improvement"]) for row in case_rows), default=0.0
-            ),
-            "tested_deviations": config.n_ambulances,
-        }
-    ]
+    summary = compute_unilateral_deviation_statistics(
+        case_rows,
+        resamples=bootstrap_resamples,
+        confidence=0.95,
+        seed=7341,
+    )
     _write_csv(output / "deviation_summary.csv", summary)
     manifest["completed_utc"] = datetime.now(timezone.utc).isoformat()
     manifest["case_count"] = len(case_rows)
