@@ -172,7 +172,7 @@ def write_communication_table(
         ("utilization", 100.0),
         ("messages_per_incident", 1.0),
     )
-    derived_metrics = ("duplicate_dispatch_rate", "missed_dispatch_rate")
+    derived_metrics = ("duplicate_dispatch_rate", "expired_dispatch_rate")
     values: dict[tuple[str, str], float | None] = {}
     seed_counts: set[int] = set()
     for level in levels:
@@ -182,13 +182,14 @@ def write_communication_table(
             if row and row.get("n"):
                 seed_counts.add(int(row["n"]))
         for metric in derived_metrics:
+            search_metrics = (metric, "missed_dispatch_rate") if metric == "expired_dispatch_rate" else (metric,)
             row = next(
                 (
                     row for row in derived
                     if row["experiment"] == "exp4_communication"
                     and row["level"] == level
                     and row["policy"] == "BID"
-                    and row["metric"] == metric
+                    and row["metric"] in search_metrics
                 ),
                 None,
             )
@@ -208,7 +209,7 @@ def write_communication_table(
         r"\label{tab:communication-rates}",
         r"\begin{tabular}{lrrrrrrr}",
         r"\toprule",
-        r"Regime & Service (\%) & Response (min) & Coverage (\%) & Util. (\%) & Msg./call & Duplicate (\%) & Missed (\%) \\",
+        r"Regime & Service (\%) & Response (min) & Coverage (\%) & Util. (\%) & Msg./call & Duplicate (\%) & Expired (\%) \\",
         r"\midrule",
     ]
     for level in levels:

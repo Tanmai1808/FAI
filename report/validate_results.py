@@ -72,7 +72,7 @@ def audit(run_dir: Path, project_root: Path) -> dict[str, Any]:
         expired = int(row["expired"])
         duplicates = int(row["duplicate_incidents"])
         commitments = int(row["total_responder_commitments"])
-        require(served + expired == n_calls, f"calls are not partitioned into served/missed for seed {row['seed']}")
+        require(served + expired == n_calls, f"calls are not partitioned into served/expired for seed {row['seed']}")
         require(0 <= duplicates <= n_calls, "duplicate incident count outside valid bounds")
         require(commitments >= served, "commitments cannot be fewer than served calls")
         require(0 <= float(row["service_rate"]) <= 1, "service rate outside [0,1]")

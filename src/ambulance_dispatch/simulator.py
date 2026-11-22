@@ -58,8 +58,17 @@ class IncidentState:
     responders: list[int] = field(default_factory=list)
     response_minute: float | None = None
     resolved: bool = False
-    missed: bool = False
+    expired: bool = False
     allocated: bool = False
+    scene_arrivals: list[int] = field(default_factory=list)
+
+    @property
+    def missed(self) -> bool:
+        return self.expired
+
+    @missed.setter
+    def missed(self, value: bool) -> None:
+        self.expired = value
 
 
 @dataclass(frozen=True)
@@ -75,15 +84,31 @@ class RunResult:
     expired: int
     duplicate_incidents: int
     total_responder_commitments: int
+    duplicate_commitments: int
+    duplicate_scene_arrivals: int
     service_rate: float
+    expired_rate: float
+    duplicate_rate: float
     mean_response_minutes: float
+    median_response_minutes: float
+    p90_response_minutes: float
     critical_mean_response_minutes: float
+    critical_service_rate: float
     mean_coverage: float
     utilization: float
     busy_ambulance_minutes: float
     messages_sent: int
     messages_delivered: int
     messages_per_incident: float
+    messages_sent_bid: int
+    messages_delivered_bid: int
+    messages_dropped_bid: int
+    messages_sent_status: int
+    messages_delivered_status: int
+    messages_dropped_status: int
+    messages_sent_rate: int
+    messages_delivered_rate: int
+    messages_dropped_rate: int
     demand_rmse: float
     response_cost: float
     external_coverage_cost: float
@@ -296,7 +321,7 @@ class Simulator:
         state = self.states.get(incident_id)
         if state is not None and not state.resolved:
             state.resolved = True
-            state.missed = True
+            state.expired = True
             self.pending.discard(incident_id)
             self.expiration_cost += self.config.weights.rho
 
@@ -471,7 +496,7 @@ class Simulator:
             ambulance.dispatch_origin = origin
             ambulance.target_node = None
             self._broadcast_state(ambulance)
-            self._schedule(self.now + travel, 1, "scene_arrival", state.incident.incident_id)
+            self._schedule(self.now + travel, 1, "scene_arrival", (state.incident.incident_id, ambulance_id))
             self._schedule(ambulance.free_at, 0, "trip_complete", ambulance_id)
 
     def _allocate_b1_b2_or_bid(self) -> None:
@@ -629,8 +654,14 @@ class Simulator:
         ambulance.target_node = None
         self._broadcast_state(ambulance)
 
-    def _handle_scene_arrival(self, incident_id: int) -> None:
+    def _handle_scene_arrival(self, payload: Any) -> None:
+        if isinstance(payload, tuple):
+            incident_id, ambulance_id = payload
+        else:
+            incident_id, ambulance_id = payload, -1
         state = self.states[incident_id]
+        if ambulance_id >= 0:
+            state.scene_arrivals.append(ambulance_id)
         if state.response_minute is None:
             state.response_minute = self.now
             state.resolved = True
@@ -690,9 +721,43 @@ class Simulator:
         self._check_invariants()
         n_incidents = len(self.states)
         served = sum(state.response_minute is not None for state in self.states.values())
-        expired = sum(state.missed for state in self.states.values())
+        expired = sum(state.expired for state in self.states.values())
         responses = [minutes for _criticality, minutes in self.response_times]
         critical = [minutes for severity, minutes in self.response_times if severity >= 4]
+        critical_incidents = [s for s in self.states.values() if s.incident.criticality >= 4]
+        critical_served = [s for s in critical_incidents if s.response_minute is not None]
+        critical_service_rate = len(critical_served) / len(critical_incidents) if critical_incidents else 1.0
+
+        def _percentile(data: list[float], q: float) -> float:
+            if not data:
+                return 0.0
+            sorted_data = sorted(data)
+            pos = q * (len(sorted_data) - 1)
+            low = int(pos)
+            high = min(low + 1, len(sorted_data) - 1)
+            frac = pos - low
+            return sorted_data[low] * (1.0 - frac) + sorted_data[high] * frac
+
+        median_response = _percentile(responses, 0.5)
+        p90_response = _percentile(responses, 0.9)
+
+        duplicate_commitments = sum(len(s.responders) - 1 for s in self.states.values() if len(s.responders) > 1)
+        duplicate_scene_arrivals = sum(len(s.scene_arrivals) - 1 for s in self.states.values() if len(s.scene_arrivals) > 1)
+        duplicate_rate = len(self.duplicate_incident_ids) / n_incidents if n_incidents else 0.0
+        expired_rate = expired / n_incidents if n_incidents else 0.0
+
+        sent_bid = self.channel.sent_by_kind["bid"]
+        delivered_bid = self.channel.delivered_by_kind["bid"]
+        dropped_bid = sent_bid - delivered_bid
+
+        sent_status = self.channel.sent_by_kind["status"]
+        delivered_status = self.channel.delivered_by_kind["status"]
+        dropped_status = sent_status - delivered_status
+
+        sent_rate = self.channel.sent_by_kind["rate"]
+        delivered_rate = self.channel.delivered_by_kind["rate"]
+        dropped_rate = sent_rate - delivered_rate
+
         return RunResult(
             policy=self.settings.policy,
             communication=self.settings.communication,
@@ -705,15 +770,31 @@ class Simulator:
             expired=expired,
             duplicate_incidents=len(self.duplicate_incident_ids),
             total_responder_commitments=self.total_responder_commitments,
+            duplicate_commitments=duplicate_commitments,
+            duplicate_scene_arrivals=duplicate_scene_arrivals,
             service_rate=served / n_incidents if n_incidents else 1.0,
+            expired_rate=expired_rate,
+            duplicate_rate=duplicate_rate,
             mean_response_minutes=sum(responses) / len(responses) if responses else 0.0,
+            median_response_minutes=median_response,
+            p90_response_minutes=p90_response,
             critical_mean_response_minutes=sum(critical) / len(critical) if critical else 0.0,
+            critical_service_rate=critical_service_rate,
             mean_coverage=self.coverage_integral / self.config.horizon_minutes,
             utilization=self.busy_minutes / (self.config.n_ambulances * self.config.horizon_minutes),
             busy_ambulance_minutes=self.busy_minutes,
             messages_sent=self.channel.messages_sent,
             messages_delivered=self.channel.messages_delivered,
             messages_per_incident=self.channel.messages_sent / n_incidents if n_incidents else 0.0,
+            messages_sent_bid=sent_bid,
+            messages_delivered_bid=delivered_bid,
+            messages_dropped_bid=dropped_bid,
+            messages_sent_status=sent_status,
+            messages_delivered_status=delivered_status,
+            messages_dropped_status=dropped_status,
+            messages_sent_rate=sent_rate,
+            messages_delivered_rate=delivered_rate,
+            messages_dropped_rate=dropped_rate,
             demand_rmse=sum(self.rmse_samples) / len(self.rmse_samples) if self.rmse_samples else 0.0,
             response_cost=self.response_cost,
             external_coverage_cost=self.external_coverage_cost,
@@ -724,12 +805,28 @@ class Simulator:
             arrival_horizon_minutes=self.config.horizon_minutes,
         )
 
+    def incident_outcomes(self) -> list[dict[str, Any]]:
+        rows = []
+        for incident_id, state in sorted(self.states.items()):
+            resp = state.response_minute
+            resp_time = (resp - state.incident.arrival_minute) if resp is not None else None
+            rows.append({
+                "incident_id": incident_id,
+                "criticality": state.incident.criticality,
+                "arrival_time": state.incident.arrival_minute,
+                "deadline": state.deadline_minute,
+                "response_time": f"{resp_time:.4f}" if resp_time is not None else "",
+                "responder_count": len(state.responders),
+                "outcome": "served" if resp is not None else "expired",
+            })
+        return rows
+
     def _check_invariants(self) -> None:
         for state in self.states.values():
             if len(state.responders) > 1 and state.incident.incident_id not in self.duplicate_incident_ids:
                 raise RuntimeError("duplicate responder accounting is inconsistent")
-            if state.missed and state.response_minute is not None:
-                raise RuntimeError("an incident cannot be both missed and served")
+            if state.expired and state.response_minute is not None:
+                raise RuntimeError("an incident cannot be both expired and served")
         for ambulance in self.ambulances:
             if ambulance.status == AmbulanceStatus.IDLE and ambulance.free_at > self.now + 1e-9:
                 raise RuntimeError("idle ambulance has a future free time")

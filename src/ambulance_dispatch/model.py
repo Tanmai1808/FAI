@@ -47,5 +47,9 @@ class IncidentOutcome:
     deadline_minute: float
     response_minute: float | None
     responder_ids: tuple[int, ...]
-    missed: bool
+    expired: bool = False
+
+    @property
+    def missed(self) -> bool:
+        return self.expired
 

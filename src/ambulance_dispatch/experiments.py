@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import csv
+import gzip
 import hashlib
 import json
 import platform
@@ -16,7 +17,7 @@ from typing import Any, Iterable
 
 from .config import ScenarioConfig, Weights, severity_mix
 from .metrics import bootstrap_mean_interval, paired_b3_gaps, summarize_by
-from .simulator import BASE_POLICIES, POLICIES, RunResult, RunSettings, simulate
+from .simulator import BASE_POLICIES, POLICIES, RunResult, RunSettings, Simulator, simulate
 
 
 @dataclass(frozen=True)
@@ -221,6 +222,24 @@ def run_experiment_suite(
     (output / "manifest.json").write_text(json.dumps(manifest, indent=2, sort_keys=True), encoding="utf-8")
     raw_path = output / "raw_results.csv"
     log_path = output / "run.log.jsonl"
+    gz_path = output / "incident_outcomes.csv.gz"
+    gz_handle = gzip.open(gz_path, "wt", newline="", encoding="utf-8")
+    gz_fieldnames = [
+        "seed",
+        "policy",
+        "experiment",
+        "level",
+        "incident_id",
+        "criticality",
+        "arrival_time",
+        "deadline",
+        "response_time",
+        "responder_count",
+        "outcome",
+    ]
+    gz_writer = csv.DictWriter(gz_handle, fieldnames=gz_fieldnames)
+    gz_writer.writeheader()
+
     raw_rows: list[dict[str, Any]] = []
     total = len(cases)
     for index, case in enumerate(cases, start=1):
@@ -232,8 +251,17 @@ def run_experiment_suite(
             scenario_id=case.scenario_id,
         )
         started = time.perf_counter()
-        result = simulate(case.config, settings)
+        sim = Simulator(case.config, settings)
+        result = sim.run()
         elapsed = time.perf_counter() - started
+        for item in sim.incident_outcomes():
+            gz_writer.writerow({
+                "seed": case.seed,
+                "policy": case.policy,
+                "experiment": case.experiment,
+                "level": case.level,
+                **item,
+            })
         row = _row_for_case(case, result, elapsed)
         raw_rows.append(row)
         _append_csv(raw_path, row)
@@ -262,6 +290,7 @@ def run_experiment_suite(
         if index == 1 or index % 20 == 0 or index == total:
             print(f"[{index}/{total}] {case.experiment} {case.level} {case.policy} seed={case.seed}: {elapsed:.2f}s")
 
+    gz_handle.close()
     comparisons = paired_b3_gaps(
         raw_rows,
         match_keys=("experiment", "level", "seed", "demand_condition"),
@@ -271,8 +300,13 @@ def run_experiment_suite(
     metrics = (
         "total_cost",
         "service_rate",
+        "expired_rate",
+        "duplicate_rate",
         "mean_response_minutes",
+        "median_response_minutes",
+        "p90_response_minutes",
         "critical_mean_response_minutes",
+        "critical_service_rate",
         "mean_coverage",
         "utilization",
         "messages_per_incident",

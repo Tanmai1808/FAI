@@ -232,6 +232,142 @@ class SimulatorTests(unittest.TestCase):
                 msg=f"Regression mismatch for seed={seed} policy={policy}",
             )
 
+    def test_message_accounting_none_and_lossy_p1(self) -> None:
+        config = ScenarioConfig(
+            width=2,
+            height=2,
+            edge_minutes=2.0,
+            n_ambulances=2,
+            horizon_minutes=60.0,
+            severity_probabilities=severity_mix("balanced"),
+        )
+        tape = fixed_tape(60.0, (Incident(0, 0.0, 1, 1),))
+
+        # Under "none", no messages are sent or delivered
+        res_none = simulate(config, RunSettings("BID", "none", seed=7), tape)
+        self.assertEqual(res_none.messages_sent, 0)
+        self.assertEqual(res_none.messages_delivered, 0)
+        self.assertEqual(res_none.messages_sent_bid, 0)
+        self.assertEqual(res_none.messages_delivered_bid, 0)
+        self.assertEqual(res_none.messages_dropped_bid, 0)
+        self.assertEqual(res_none.messages_sent_status, 0)
+        self.assertEqual(res_none.messages_delivered_status, 0)
+        self.assertEqual(res_none.messages_dropped_status, 0)
+        self.assertEqual(res_none.messages_sent_rate, 0)
+        self.assertEqual(res_none.messages_delivered_rate, 0)
+        self.assertEqual(res_none.messages_dropped_rate, 0)
+
+        # Under "lossy" with p=1.0, messages are sent but none are delivered
+        res_lossy = simulate(
+            config,
+            RunSettings("BID", "lossy", packet_loss_probability=1.0, seed=7),
+            tape,
+        )
+        self.assertGreater(res_lossy.messages_sent, 0)
+        self.assertEqual(res_lossy.messages_delivered, 0)
+        self.assertGreater(res_lossy.messages_sent_bid, 0)
+        self.assertEqual(res_lossy.messages_delivered_bid, 0)
+        self.assertEqual(res_lossy.messages_dropped_bid, res_lossy.messages_sent_bid)
+        self.assertEqual(res_lossy.messages_delivered_status, 0)
+        self.assertEqual(res_lossy.messages_dropped_status, res_lossy.messages_sent_status)
+        self.assertEqual(res_lossy.messages_delivered_rate, 0)
+        self.assertEqual(res_lossy.messages_dropped_rate, res_lossy.messages_sent_rate)
+        self.assertEqual(
+            res_lossy.messages_sent,
+            res_lossy.messages_sent_bid + res_lossy.messages_sent_status + res_lossy.messages_sent_rate,
+        )
+        self.assertEqual(
+            res_lossy.messages_sent,
+            res_lossy.messages_dropped_bid + res_lossy.messages_dropped_status + res_lossy.messages_dropped_rate,
+        )
+
+    def test_distribution_metrics_and_incident_outcomes(self) -> None:
+        config = ScenarioConfig(
+            width=2,
+            height=2,
+            edge_minutes=2.0,
+            n_ambulances=2,
+            horizon_minutes=60.0,
+            deadlines_minutes=(1.0, 1.0, 1.0, 30.0, 60.0),
+            severity_probabilities=severity_mix("balanced"),
+        )
+        tape = fixed_tape(
+            60.0,
+            (
+                Incident(0, 0.0, 0, 5),   # node 0, K=5 -> served by amb 0 at t=0.0 (response 0.0)
+                Incident(1, 10.0, 1, 4),  # node 1, K=4 -> served by amb 1 at t=12.0 (response 2.0)
+                Incident(2, 30.0, 3, 1),  # node 3, K=1 -> deadline 31.0, amb 0 at node 0 needs travel 4.0 > 1.0 -> expires
+            ),
+        )
+        sim = Simulator(config, RunSettings("B1", "full", seed=42), tape)
+        result = sim.run()
+
+        self.assertEqual(result.n_incidents, 3)
+        self.assertEqual(result.served, 2)
+        self.assertEqual(result.expired, 1)
+        self.assertAlmostEqual(result.service_rate, 2 / 3)
+        self.assertAlmostEqual(result.expired_rate, 1 / 3)
+
+        # Responses for served calls: [0.0, 2.0]
+        # median = 1.0, p90 = 0.0 * 0.1 + 2.0 * 0.9 = 1.8
+        self.assertAlmostEqual(result.mean_response_minutes, 1.0)
+        self.assertAlmostEqual(result.median_response_minutes, 1.0)
+        self.assertAlmostEqual(result.p90_response_minutes, 1.8)
+
+        # Critical (K >= 4): incidents 0 (K=5) and 1 (K=4)
+        self.assertAlmostEqual(result.critical_service_rate, 1.0)
+        self.assertAlmostEqual(result.critical_mean_response_minutes, 1.0)
+
+        outcomes = sim.incident_outcomes()
+        self.assertEqual(len(outcomes), 3)
+        self.assertEqual(outcomes[0]["incident_id"], 0)
+        self.assertEqual(outcomes[0]["criticality"], 5)
+        self.assertEqual(outcomes[0]["outcome"], "served")
+        self.assertEqual(outcomes[0]["response_time"], "0.0000")
+        self.assertEqual(outcomes[0]["responder_count"], 1)
+
+        self.assertEqual(outcomes[1]["incident_id"], 1)
+        self.assertEqual(outcomes[1]["criticality"], 4)
+        self.assertEqual(outcomes[1]["outcome"], "served")
+        self.assertEqual(outcomes[1]["response_time"], "2.0000")
+        self.assertEqual(outcomes[1]["responder_count"], 1)
+
+        self.assertEqual(outcomes[2]["incident_id"], 2)
+        self.assertEqual(outcomes[2]["criticality"], 1)
+        self.assertEqual(outcomes[2]["outcome"], "expired")
+        self.assertEqual(outcomes[2]["response_time"], "")
+        self.assertEqual(outcomes[2]["responder_count"], 0)
+
+    def test_duplicate_response_time_is_first_scene_arrival(self) -> None:
+        config = ScenarioConfig(
+            width=2,
+            height=2,
+            edge_minutes=2.0,
+            n_ambulances=2,
+            horizon_minutes=60.0,
+            severity_probabilities=severity_mix("balanced"),
+        )
+        # Incident at node 0 (0,0): Amb 0 is at node 0 (travel 0.0), Amb 1 is at node 3 (travel 4.0)
+        tape = fixed_tape(60.0, (Incident(0, 0.0, 0, 3),))
+        sim = Simulator(config, RunSettings("BID", "none", seed=7), tape)
+        result = sim.run()
+
+        self.assertEqual(result.served, 1)
+        self.assertEqual(result.duplicate_incidents, 1)
+        self.assertEqual(result.total_responder_commitments, 2)
+        self.assertEqual(result.duplicate_commitments, 1)
+        self.assertEqual(result.duplicate_scene_arrivals, 1)
+        self.assertAlmostEqual(result.duplicate_rate, 1.0)
+        self.assertAlmostEqual(result.mean_response_minutes, 0.0)
+        self.assertAlmostEqual(result.median_response_minutes, 0.0)
+        self.assertAlmostEqual(result.p90_response_minutes, 0.0)
+
+        outcomes = sim.incident_outcomes()
+        self.assertEqual(len(outcomes), 1)
+        self.assertEqual(outcomes[0]["response_time"], "0.0000")
+        self.assertEqual(outcomes[0]["responder_count"], 2)
+        self.assertEqual(outcomes[0]["outcome"], "served")
+
 
 if __name__ == "__main__":
     unittest.main()

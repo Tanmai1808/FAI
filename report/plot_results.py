@@ -82,15 +82,18 @@ def derive_rate_summaries(raw: list[dict[str, str]], resamples: int = 2000) -> l
     derived = []
     for row in raw:
         n = int(row["n_incidents"])
+        exp_rate = float(row.get("expired_rate", int(row["expired"]) / n if n else 0.0))
+        dup_rate = float(row.get("duplicate_rate", int(row["duplicate_incidents"]) / n if n else 0.0))
         item = {
             **row,
-            "duplicate_dispatch_rate": int(row["duplicate_incidents"]) / n if n else 0.0,
-            "missed_dispatch_rate": int(row["expired"]) / n if n else 0.0,
+            "duplicate_dispatch_rate": dup_rate,
+            "expired_dispatch_rate": exp_rate,
+            "missed_dispatch_rate": exp_rate,
         }
         derived.append(item)
     group_keys = ("experiment", "level", "policy", "communication", "demand_condition")
     summaries = []
-    for metric in ("duplicate_dispatch_rate", "missed_dispatch_rate"):
+    for metric in ("duplicate_dispatch_rate", "expired_dispatch_rate", "missed_dispatch_rate"):
         summaries.extend(summarize_by(derived, group_keys, metric, resamples=resamples, seed=491))
     return summaries
 
@@ -213,6 +216,7 @@ def build(run_dir: Path) -> list[Path]:
         ("utilization", "Ambulance utilization", True),
         ("messages_per_incident", "Messages per incident", False),
         ("duplicate_dispatch_rate", "Duplicate-dispatch rate", True),
+        ("expired_dispatch_rate", "Expired-dispatch rate", True),
         ("missed_dispatch_rate", "Missed-dispatch rate", True),
         ("demand_rmse", "Demand-rate RMSE", False),
     )
@@ -231,6 +235,7 @@ def build(run_dir: Path) -> list[Path]:
         report_dir / "exp4_communication_service_rate.png",
         report_dir / "exp4_communication_b3_cost_gap_relative.png",
         report_dir / "exp4_communication_duplicate_dispatch_rate.png",
+        report_dir / "exp4_communication_expired_dispatch_rate.png",
         report_dir / "exp4_communication_missed_dispatch_rate.png",
         report_dir / "exp5_demand_knowledge_service_rate.png",
         report_dir / "exp5_demand_knowledge_demand_rmse.png",
