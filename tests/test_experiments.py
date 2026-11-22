@@ -238,6 +238,34 @@ class ExperimentDesignTests(unittest.TestCase):
         self.assertEqual(sim._true_rates(3000.0 - 1e-9), pre_shift_rates)
         self.assertEqual(sim._true_rates(3060.0 - 1e-9), post_shift_rates)
 
+    def test_dirty_tree_guard_refuses_final_run_without_override(self) -> None:
+        import unittest.mock
+        base = ScenarioConfig(width=3, height=3, n_ambulances=3, horizon_minutes=60.0)
+        with tempfile.TemporaryDirectory() as directory:
+            out_dir = pathlib.Path(directory) / "results"
+            with unittest.mock.patch("ambulance_dispatch.experiments._git_status", return_value=("mock_rev", True)):
+                with self.assertRaises(RuntimeError) as ctx:
+                    run_experiment_suite(
+                        pathlib.Path.cwd(),
+                        out_dir,
+                        base,
+                        range(20),
+                        selected={"exp4"},
+                        allow_dirty=False,
+                    )
+                self.assertIn("dirty", str(ctx.exception).lower())
+
+                with self.assertRaises(RuntimeError) as dev_ctx:
+                    from ambulance_dispatch.experiments import run_unilateral_deviations
+                    run_unilateral_deviations(
+                        pathlib.Path.cwd(),
+                        out_dir / "deviations",
+                        base,
+                        range(20),
+                        allow_dirty=False,
+                    )
+                self.assertIn("dirty", str(dev_ctx.exception).lower())
+
 
 if __name__ == "__main__":
     unittest.main()

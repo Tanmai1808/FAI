@@ -48,6 +48,20 @@ class WeightSensitivityTests(unittest.TestCase):
                 self.assertEqual(int(row["n_incidents"]), int(row["served"]) + int(row["expired"]))
                 self.assertEqual(row["config_sha256"], hashlib.sha256(row["config_json"].encode()).hexdigest())
 
+    def test_weight_sensitivity_refuses_final_run_on_dirty_tree(self) -> None:
+        import unittest.mock
+        base = ScenarioConfig(n_ambulances=3, horizon_minutes=60.0)
+        with tempfile.TemporaryDirectory() as temporary:
+            with unittest.mock.patch("tools.run_weight_sensitivity._git_status", return_value=("mock_rev", True)):
+                with self.assertRaises(RuntimeError) as ctx:
+                    run_weight_sensitivity(
+                        Path(temporary) / "run",
+                        base,
+                        range(20),
+                        allow_dirty=False,
+                    )
+                self.assertIn("dirty", str(ctx.exception).lower())
+
 
 if __name__ == "__main__":
     unittest.main()

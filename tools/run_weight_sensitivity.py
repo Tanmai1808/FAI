@@ -106,6 +106,7 @@ def run_weight_sensitivity(
     bootstrap_resamples: int = 2_000,
     weight_levels: dict[str, Iterable[float]] | None = None,
     experiment_config: dict[str, Any] | None = None,
+    allow_dirty: bool = False,
 ) -> Path:
     output = Path(output_dir).resolve()
     if output.exists() and any(output.iterdir()):
@@ -117,6 +118,8 @@ def run_weight_sensitivity(
     experiment_config = experiment_config or {}
     output.mkdir(parents=True, exist_ok=True)
     rev, is_dirty = _git_status()
+    if len(seed_list) >= 20 and is_dirty and not allow_dirty:
+        raise RuntimeError("refusing to start a final run on a dirty working tree (pass --allow-dirty to override)")
     manifest: dict[str, Any] = {
         "created_utc": datetime.now(timezone.utc).isoformat(),
         "experiment": "exp8_weight_sensitivity",
@@ -264,6 +267,7 @@ def main() -> int:
         bootstrap_resamples=int(experiment_config["bootstrap_resamples"]),
         weight_levels=levels,
         experiment_config=experiment_config,
+        allow_dirty=args.allow_dirty,
     )
     return 0
 

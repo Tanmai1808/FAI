@@ -193,18 +193,33 @@ def _source_manifest(project_root: Path) -> dict[str, str]:
     }
 
 
-def _git_revision(project_root: Path) -> str | None:
+def _git_status(project_root: Path) -> tuple[str | None, bool]:
+    revision = None
+    dirty = False
     try:
-        result = subprocess.run(
+        rev_res = subprocess.run(
             ["git", "rev-parse", "HEAD"],
             cwd=project_root,
             check=True,
             capture_output=True,
             text=True,
         )
+        revision = rev_res.stdout.strip()
+        status_res = subprocess.run(
+            ["git", "status", "--porcelain"],
+            cwd=project_root,
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+        dirty = bool(status_res.stdout.strip())
     except (OSError, subprocess.CalledProcessError):
-        return None
-    return result.stdout.strip()
+        pass
+    return revision, dirty
+
+
+def _git_revision(project_root: Path) -> str | None:
+    return _git_status(project_root)[0]
 
 
 def _write_csv(path: Path, rows: list[dict[str, Any]]) -> None:
@@ -251,9 +266,11 @@ def run_experiment_suite(
     seeds: Iterable[int],
     selected: set[str] | None = None,
     bootstrap_resamples: int = 2_000,
+    allow_dirty: bool = False,
 ) -> Path:
     """Run cases in order, saving each completed raw row and an append-only JSONL log."""
     project_root = Path(project_root).resolve()
+    git_rev, git_dirty = _git_status(project_root)
     output = Path(output_dir).resolve()
     if output.exists() and any(output.iterdir()):
         raise FileExistsError(f"refusing to overwrite non-empty results directory: {output}")
@@ -261,12 +278,15 @@ def run_experiment_suite(
     (output / "plots").mkdir(exist_ok=True)
     cases = build_experiment_cases(base, seeds, selected)
     seed_list = sorted({case.seed for case in cases})
+    if len(seed_list) >= 20 and git_dirty and not allow_dirty:
+        raise RuntimeError("refusing to start a final run on a dirty working tree; pass --allow-dirty to override")
     manifest = {
         "created_utc": datetime.now(timezone.utc).isoformat(),
         "command_line": sys.argv,
         "python_version": sys.version,
         "platform": platform.platform(),
-        "git_revision": _git_revision(project_root),
+        "git_revision": git_rev,
+        "git_dirty": git_dirty,
         "source_sha256": _source_manifest(project_root),
         "seed_list": seed_list,
         "bootstrap_resamples": bootstrap_resamples,
@@ -407,7 +427,7 @@ def run_experiment_suite(
     from .plotting import create_experiment_plots
 
     create_experiment_plots(summary_rows, output / "plots")
-    run_unilateral_deviations(project_root, output / "deviations", base, seed_list)
+    run_unilateral_deviations(project_root, output / "deviations", base, seed_list, allow_dirty=allow_dirty)
     return output
 
 
@@ -418,6 +438,7 @@ def run_unilateral_deviations(
     seeds: Iterable[int],
     communication: str = "full",
     bootstrap_resamples: int = 2_000,
+    allow_dirty: bool = False,
 ) -> Path:
     """Compare BID against one agent at a time replacing its bid with nearest/time-only."""
     from .simulator import RunSettings, simulate
@@ -427,10 +448,14 @@ def run_unilateral_deviations(
         raise FileExistsError(f"refusing to overwrite non-empty deviation directory: {output}")
     output.mkdir(parents=True, exist_ok=True)
     source_root = Path(project_root).resolve()
+    git_rev, git_dirty = _git_status(source_root)
     seed_list = tuple(int(seed) for seed in seeds)
+    if len(seed_list) >= 20 and git_dirty and not allow_dirty:
+        raise RuntimeError("refusing to start a final deviation run on a dirty working tree; pass --allow-dirty to override")
     manifest = {
         "created_utc": datetime.now(timezone.utc).isoformat(),
-        "git_revision": _git_revision(source_root),
+        "git_revision": git_rev,
+        "git_dirty": git_dirty,
         "source_sha256": _source_manifest(source_root),
         "seeds": seed_list,
         "analysis": "restricted empirical unilateral-deviation analysis (nearest-time-only rule)",

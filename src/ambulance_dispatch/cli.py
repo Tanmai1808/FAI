@@ -97,6 +97,7 @@ def main(argv: list[str] | None = None) -> int:
         seeds,
         selected=set(args.experiment) if args.experiment else None,
         bootstrap_resamples=args.bootstrap_resamples,
+        allow_dirty=args.allow_dirty,
     )
     print(f"Results written to {result_path}")
     return 0
