@@ -1,7 +1,0 @@
-Pillow>=10
-
-[dev]
-pytest>=8
-
-[plots]
-Pillow>=10

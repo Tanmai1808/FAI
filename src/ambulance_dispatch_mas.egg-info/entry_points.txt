@@ -1,2 +1,0 @@
-[console_scripts]
-ambulance-dispatch = ambulance_dispatch.cli:main
