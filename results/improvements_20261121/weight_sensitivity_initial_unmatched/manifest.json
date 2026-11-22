@@ -1,0 +1,248 @@
+{
+  "base_config": {
+    "coverage_radius_minutes": 8.0,
+    "deadlines_minutes": [
+      60.0,
+      45.0,
+      30.0,
+      20.0,
+      15.0
+    ],
+    "demand_pattern": "hotspots",
+    "edge_minutes": 2.0,
+    "height": 5,
+    "horizon_minutes": 6000.0,
+    "learning_bin_minutes": 60.0,
+    "learning_eta": 0.25,
+    "n_ambulances": 5,
+    "on_scene_minutes": 20.0,
+    "prior_total_rate_per_hour": 5.0,
+    "reposition_epsilon": 0.01,
+    "severity_probabilities": [
+      0.35,
+      0.25,
+      0.2,
+      0.13,
+      0.07
+    ],
+    "status_ttl_minutes": 120.0,
+    "total_rate_per_hour": 5.0,
+    "weights": {
+      "alpha": 1.0,
+      "beta": 8.0,
+      "gamma": 8.0,
+      "rho": 120.0
+    },
+    "width": 5
+  },
+  "base_config_sha256": "e9ba484a45f15c4539252730dbd932b1b8ff548918b406388bce83b9abfb1e40",
+  "bootstrap_resamples": 2000,
+  "case_count": 720,
+  "case_semantics": "same seed creates the same exogenous incident tape for all weight cells and policies",
+  "code_revision_at_run": "03584f95df848f49f6d3c5cf17d9b8ce2cada929",
+  "communication_settings": {
+    "note": "radius and loss defaults are recorded but inactive under full communication",
+    "packet_loss_probability": 0.25,
+    "radius_minutes": 12.0,
+    "regime": "full"
+  },
+  "completed_case_count": 720,
+  "completed_utc": "2026-11-20T22:52:44.290423+00:00",
+  "created_utc": "2026-11-20T22:48:34.199448+00:00",
+  "design": "three independent one-factor-at-a-time sweeps; other weights fixed at base values",
+  "experiment": "exp8_weight_sensitivity",
+  "experiment_config": {
+    "analysis_unit": "scenario seed; bootstrap resamples matched seeds, not incidents",
+    "base_config": "default.json",
+    "bootstrap_resamples": 2000,
+    "communication": {
+      "packet_loss_probability": 0.25,
+      "radius_minutes": 12.0,
+      "regime": "full"
+    },
+    "demand_knowledge": {
+      "B1": "learned diagnostic only; not used by the dispatch rule",
+      "B2": "learned diagnostic only; not used by the dispatch rule",
+      "B3": "true-rate oracle",
+      "BID": "learned rates"
+    },
+    "experiment": "exp8_weight_sensitivity",
+    "fixed_weights": {
+      "alpha": 1.0,
+      "beta": 8.0,
+      "gamma": 8.0,
+      "rho": 120.0
+    },
+    "policies": [
+      "B1",
+      "B2",
+      "B3",
+      "BID"
+    ],
+    "seed_count": 20,
+    "seed_start": 1000,
+    "weight_levels": {
+      "alpha": [
+        0.5,
+        1.0,
+        2.0
+      ],
+      "beta": [
+        4.0,
+        8.0,
+        16.0
+      ],
+      "gamma": [
+        4.0,
+        8.0,
+        16.0
+      ]
+    }
+  },
+  "experiment_config_sha256": "08efa419239d2559bad2a095b3e6c611c7d4986558b7daa2b289b513b5fb3556",
+  "policy_settings": {
+    "demand_knowledge": "B1/B2 learned diagnostic only; B3 true-rate oracle; BID learned-rate input",
+    "deviation": null,
+    "policies": [
+      "B1",
+      "B2",
+      "B3",
+      "BID"
+    ]
+  },
+  "seed_list": [
+    1000,
+    1001,
+    1002,
+    1003,
+    1004,
+    1005,
+    1006,
+    1007,
+    1008,
+    1009,
+    1010,
+    1011,
+    1012,
+    1013,
+    1014,
+    1015,
+    1016,
+    1017,
+    1018,
+    1019
+  ],
+  "source_sha256": {
+    "src/ambulance_dispatch/__init__.py": "dc21b398b743962dcc001683ed51da6f07848b1e5ea5e91a0d83d1a324cf8fea",
+    "src/ambulance_dispatch/cli.py": "dfe49cc9c989406f8086ec22caae45000d2161a322340f6258e70cc034ab8a35",
+    "src/ambulance_dispatch/communication.py": "9309b1d234055250f4d36761bb0913dae984cbab553b98da7d658ea8d3f9b8e0",
+    "src/ambulance_dispatch/config.py": "5e87a7f2c2030ed329701247ef5d67485e6c92aa21078b701f9f6a79c826e5eb",
+    "src/ambulance_dispatch/demand.py": "ce0a019ac32e7c06193e0ce304ac728859baa3d6890d35a48f317f383fc39fcf",
+    "src/ambulance_dispatch/experiments.py": "d908c74afd710e330540ac5c1b4d63ddb470a68f1f1e326820aed0b02322f5ae",
+    "src/ambulance_dispatch/graph.py": "b6174a524c6498cbfda4e1816dcb3f506f4cb023230ca8f4487b17df1608e266",
+    "src/ambulance_dispatch/learning.py": "c4f7d83a72c3c114d1f6c7239e403513509419be768b1adc91318f0d225fc1ca",
+    "src/ambulance_dispatch/metrics.py": "3e3b0486999edf7aa01d92090053404cb5cf6cb74095008f06942d2eefa957f1",
+    "src/ambulance_dispatch/model.py": "0c4b217003bcf053b198e258a91df5e165f2ad02d1efc84a09239092d584fa9d",
+    "src/ambulance_dispatch/plotting.py": "fe57a966cde11bf6728050ba61bb4594f0b37d90edd39dd844eededbe114d406",
+    "src/ambulance_dispatch/policies/__init__.py": "458260a1e1b1b6bee5174304d9a7b9f8e49538844ee57b4dbd5282c1392534c4",
+    "src/ambulance_dispatch/policies/baselines.py": "55f1b21e07d8e67a45904e3a90e48e6ee5f7952cc9861b0f7b167931d00909e4",
+    "src/ambulance_dispatch/policies/bidding.py": "7b88fc38548ccb66047a3f783d04c9d55ac9305662f23cc469408f04a5c9376d",
+    "src/ambulance_dispatch/policies/centralized.py": "01786bad56613239d12bd5eba199ccfb9333fa8aa131e88e4995492b675b0421",
+    "src/ambulance_dispatch/policies/costs.py": "839b9d5db4bc413546868e7d8206bdbeeb66cef6c418dc95b7ee81b5226954e9",
+    "src/ambulance_dispatch/simulator.py": "07f258a5d7713f359f5e02ce792742d6b5b8777afdb1cd630b6c96b8ddef822b",
+    "tools/run_weight_sensitivity.py": "8460a616c53a21cadd6d7934706aed5fcf85d100eeee702ec2c63a2d6829a3a8"
+  },
+  "total_wall_seconds": 229.5219843990635,
+  "weight_levels": [
+    {
+      "factor": "alpha",
+      "level": 0.5,
+      "weights": {
+        "alpha": 0.5,
+        "beta": 8.0,
+        "gamma": 8.0,
+        "rho": 120.0
+      }
+    },
+    {
+      "factor": "alpha",
+      "level": 1.0,
+      "weights": {
+        "alpha": 1.0,
+        "beta": 8.0,
+        "gamma": 8.0,
+        "rho": 120.0
+      }
+    },
+    {
+      "factor": "alpha",
+      "level": 2.0,
+      "weights": {
+        "alpha": 2.0,
+        "beta": 8.0,
+        "gamma": 8.0,
+        "rho": 120.0
+      }
+    },
+    {
+      "factor": "beta",
+      "level": 4.0,
+      "weights": {
+        "alpha": 1.0,
+        "beta": 4.0,
+        "gamma": 8.0,
+        "rho": 120.0
+      }
+    },
+    {
+      "factor": "beta",
+      "level": 8.0,
+      "weights": {
+        "alpha": 1.0,
+        "beta": 8.0,
+        "gamma": 8.0,
+        "rho": 120.0
+      }
+    },
+    {
+      "factor": "beta",
+      "level": 16.0,
+      "weights": {
+        "alpha": 1.0,
+        "beta": 16.0,
+        "gamma": 8.0,
+        "rho": 120.0
+      }
+    },
+    {
+      "factor": "gamma",
+      "level": 4.0,
+      "weights": {
+        "alpha": 1.0,
+        "beta": 8.0,
+        "gamma": 4.0,
+        "rho": 120.0
+      }
+    },
+    {
+      "factor": "gamma",
+      "level": 8.0,
+      "weights": {
+        "alpha": 1.0,
+        "beta": 8.0,
+        "gamma": 8.0,
+        "rho": 120.0
+      }
+    },
+    {
+      "factor": "gamma",
+      "level": 16.0,
+      "weights": {
+        "alpha": 1.0,
+        "beta": 8.0,
+        "gamma": 16.0,
+        "rho": 120.0
+      }
+    }
+  ]
+}
