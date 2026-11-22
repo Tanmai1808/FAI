@@ -412,7 +412,9 @@ def write_deviation_table(deviation_rows: list[dict[str, str]], target: Path) ->
     """Write corrected unilateral deviation results table."""
     lines = [
         r"\begin{table}[t]",
-        r"\centering\small",
+        r"\centering\scriptsize",
+        r"\setlength{\tabcolsep}{3.5pt}",
+        r"\renewcommand{\arraystretch}{0.88}",
         r"\caption{Restricted empirical unilateral-deviation analysis (nearest-time-only selfish deviation). $\widehat{\epsilon}$ denotes the maximum empirical mean payoff improvement across all agents. Cells report mean payoff gain ($\bar{\Delta}_i$) with 95\% paired-seed bootstrap interval and relative gain versus mean baseline cost.}",
         r"\label{tab:deviation}",
         r"\begin{tabular}{lrrr}",
@@ -534,10 +536,57 @@ def write_macros(
 
     full_service = summary_value("exp4_communication", "full", "BID", "service_rate")
     none_service = summary_value("exp4_communication", "none", "BID", "service_rate")
+    full_gap = summary_value("exp4_communication", "full", "BID", "b3_cost_gap_relative")
+    full_resp = summary_value("exp4_communication", "full", "BID", "mean_response_minutes")
+    full_exp = summary_value("exp4_communication", "full", "BID", "expired_rate")
+
+    none_gap = summary_value("exp4_communication", "none", "BID", "b3_cost_gap_relative")
+    none_resp = summary_value("exp4_communication", "none", "BID", "mean_response_minutes")
+    none_exp = summary_value("exp4_communication", "none", "BID", "expired_rate")
+    none_dup = summary_value("exp4_communication", "none", "BID", "duplicate_rate")
+
+    lossy_service = summary_value("exp4_communication", "lossy", "BID", "service_rate")
+    lossy_gap = summary_value("exp4_communication", "lossy", "BID", "b3_cost_gap_relative")
+    lossy_dup = summary_value("exp4_communication", "lossy", "BID", "duplicate_rate")
+    lossy_exp = summary_value("exp4_communication", "lossy", "BID", "expired_rate")
+
+    rad_service = summary_value("exp4_communication", "radius-limited", "BID", "service_rate")
+    rad_dup = summary_value("exp4_communication", "radius-limited", "BID", "duplicate_rate")
+
     if full_service is not None:
         macros.append(macro("FullBIDServicePercent", f"{full_service * 100:.1f}"))
+    if full_gap is not None:
+        macros.append(macro("FullBIDCostGapPercent", f"{full_gap * 100:.1f}"))
+    if full_resp is not None:
+        macros.append(macro("FullBIDResponseMinutes", f"{full_resp:.1f}"))
+    if full_exp is not None:
+        macros.append(macro("FullBIDExpiredPercent", f"{full_exp * 100:.1f}"))
+
     if none_service is not None:
         macros.append(macro("NoneBIDServicePercent", f"{none_service * 100:.1f}"))
+    if none_gap is not None:
+        macros.append(macro("NoneBIDCostGapPercent", f"{none_gap * 100:.1f}"))
+    if none_resp is not None:
+        macros.append(macro("NoneBIDResponseMinutes", f"{none_resp:.1f}"))
+    if none_exp is not None:
+        macros.append(macro("NoneBIDExpiredPercent", f"{none_exp * 100:.1f}"))
+    if none_dup is not None:
+        macros.append(macro("NoneBIDDuplicatePercent", f"{none_dup * 100:.1f}"))
+
+    if lossy_service is not None:
+        macros.append(macro("LossyBIDServicePercent", f"{lossy_service * 100:.1f}"))
+    if lossy_gap is not None:
+        macros.append(macro("LossyBIDCostGapPercent", f"{lossy_gap * 100:.1f}"))
+    if lossy_dup is not None:
+        macros.append(macro("LossyBIDDuplicatePercent", f"{lossy_dup * 100:.1f}"))
+    if lossy_exp is not None:
+        macros.append(macro("LossyBIDExpiredPercent", f"{lossy_exp * 100:.1f}"))
+
+    if rad_service is not None:
+        macros.append(macro("RadiusLimitedBIDServicePercent", f"{rad_service * 100:.1f}"))
+    if rad_dup is not None:
+        macros.append(macro("RadiusLimitedBIDDuplicatePercent", f"{rad_dup * 100:.1f}"))
+
     if full_service is not None and none_service is not None:
         macros.append(macro("FullNoneServiceDifferencePP", f"{(full_service-none_service)*100:.1f}"))
 
@@ -548,6 +597,30 @@ def write_macros(
         service = summary_value("exp5_demand_knowledge", level, "BID", "service_rate")
         if service is not None:
             macros.append(macro(f"{name}BIDServicePercent", f"{100*service:.1f}"))
+
+    stat_rmse = summary_value("exp5_demand_knowledge", "learned", "BID", "demand_rmse")
+    if stat_rmse is not None:
+        macros.append(macro("StationaryLearnedRMSE", f"{stat_rmse:.2f}"))
+
+    shift_rmse = summary_value("exp5b_learning_shifting", "learned", "BID", "demand_rmse")
+    if shift_rmse is not None:
+        macros.append(macro("ShiftLearnedRMSE", f"{shift_rmse:.2f}"))
+
+    # Cost components at n=7 and n=10
+    for lvl, lvl_name in (("n=7", "Seven"), ("n=10", "Ten")):
+        for pol, pol_name in (("B1", "BOne"), ("B3", "BThree"), ("BID", "BID")):
+            pol_rows = [r for r in raw if r.get("experiment") == "exp1_ambulance_count" and r.get("level") == lvl and r.get("policy") == pol]
+            if pol_rows:
+                tot = sum(float(r["total_cost"]) for r in pol_rows) / len(pol_rows)
+                resp = sum(float(r["response_cost"]) for r in pol_rows) / len(pol_rows)
+                ext = sum(float(r["external_coverage_cost"]) for r in pol_rows) / len(pol_rows)
+                home = sum(float(r["home_demand_cost"]) for r in pol_rows) / len(pol_rows)
+                exp_c = sum(float(r["expiration_cost"]) for r in pol_rows) / len(pol_rows)
+                macros.append(macro(f"{pol_name}TotalCost{lvl_name}", f"{tot:.1f}"))
+                macros.append(macro(f"{pol_name}ResponseCost{lvl_name}", f"{resp:.1f}"))
+                macros.append(macro(f"{pol_name}ExtCoverageCost{lvl_name}", f"{ext:.1f}"))
+                macros.append(macro(f"{pol_name}HomeDemandCost{lvl_name}", f"{home:.1f}"))
+                macros.append(macro(f"{pol_name}ExpirationCost{lvl_name}", f"{exp_c:.1f}"))
 
     if deviation_rows:
         row = deviation_rows[0]
@@ -565,6 +638,21 @@ def write_macros(
             macros.append(macro("DeviationMaximumObserved", f"{maximum:.2f}"))
         if rel is not None:
             macros.append(macro("DeviationRelativeGainPercent", f"{rel * 100:.2f}"))
+
+        # Find Agent 2
+        for ag_row in deviation_rows[1:]:
+            if ag_row.get("deviator_id") == "2":
+                a2_mean = num(ag_row.get("mean"))
+                a2_low = num(ag_row.get("ci95_low"))
+                a2_high = num(ag_row.get("ci95_high"))
+                a2_rel = num(ag_row.get("relative_gain"))
+                if a2_mean is not None:
+                    macros.append(macro("AgentTwoDeviationMean", f"{a2_mean:.2f}"))
+                if a2_low is not None and a2_high is not None:
+                    macros.append(macro("AgentTwoDeviationCILow", f"{a2_low:.2f}"))
+                    macros.append(macro("AgentTwoDeviationCIHigh", f"{a2_high:.2f}"))
+                if a2_rel is not None:
+                    macros.append(macro("AgentTwoRelativeGainPercent", f"{a2_rel * 100:.2f}"))
 
     b2q_rows = [r for r in raw if r.get("policy") == "B2q" and r.get("critical_mean_response_minutes") not in (None, "", "NA")]
     b2_rows = [r for r in raw if r.get("policy") == "B2" and r.get("experiment") in ("exp1_ambulance_count", "exp2_total_demand", "exp6_criticality_mix") and r.get("critical_mean_response_minutes") not in (None, "", "NA")]

@@ -1,7 +1,7 @@
 \documentclass{article}
 \usepackage{arxiv}
 \geometry{a4paper}
-\AtBeginDocument{\newgeometry{textheight=9.15in,textwidth=6.35in,top=.72in,headheight=14pt,headsep=18pt,footskip=24pt}}
+\AtBeginDocument{\newgeometry{textheight=9.20in,textwidth=6.35in,top=.70in,headheight=14pt,headsep=18pt,footskip=24pt}}
 \usepackage[utf8]{inputenc}
 \usepackage[T1]{fontenc}
 \usepackage{microtype}
@@ -11,12 +11,27 @@
 \usepackage{longtable}
 \usepackage{caption}
 \usepackage[numbers,sort&compress]{natbib}
+\setlength{\bibsep}{0pt}
+\setlength{\textfloatsep}{6pt plus 1pt minus 1pt}
+\setlength{\floatsep}{5pt plus 1pt minus 1pt}
+\setlength{\intextsep}{5pt plus 1pt minus 1pt}
+\renewcommand{\arraystretch}{0.88}
+\setcounter{topnumber}{5}
+\setcounter{bottomnumber}{4}
+\setcounter{totalnumber}{8}
+\renewcommand{\topfraction}{0.92}
+\renewcommand{\bottomfraction}{0.85}
+\renewcommand{\textfraction}{0.08}
+\renewcommand{\floatpagefraction}{0.85}
+\usepackage{titlesec}
+\titlespacing\section{0pt}{5pt plus 1pt minus 1pt}{1.5pt plus 1pt minus 1pt}
+\titlespacing\subsection{0pt}{3.5pt plus 1pt minus 1pt}{1pt plus 1pt minus 1pt}
 \usepackage[hidelinks]{hyperref}
 \renewcommand{\headeright}{CS329 Project Report}
 \renewcommand{\undertitle}{Project Implementation Report}
 \renewcommand{\shorttitle}{Ambulance Dispatch under Limited Communication}
 \captionsetup{font=small,labelfont=bf}
-\graphicspath{{../results/full_20261121/report_plots/}{../results/improvements_20261121/weight_sensitivity/report_plots/}}
+\graphicspath{{../results/final_30_seed/report_plots/}{../results/final_30_seed/weight_sensitivity/report_plots/}{../results/full_20261121/report_plots/}{../results/improvements_20261121/weight_sensitivity/report_plots/}}
 \input{generated/result_macros.tex}
 
 \title{Decentralized Ambulance Dispatch under Limited Communication and Unknown Demand}
@@ -179,31 +194,37 @@ To evaluate whether all-BID forms an empirical $\epsilon$-Nash equilibrium again
 The experimental suite executes \NPolicyRuns{} policy episodes across \NScenarioSeeds{} paired seeds per condition, ensuring identical exogenous arrival streams for all algorithms.
 
 \subsection{Communication Constraints and Degradation}
-Figure~\ref{fig:communication-learning} and Table~\ref{tab:communication-rates} depict fleet performance across communication regimes. Under full communication, BID achieves a service rate of 99.8\% with an empirical signed cost gap of \LearnedBIDCostGapPercent\% relative to centralized heuristic B3. As communication is restricted to radius limits or subject to packet drops, performance degrades smoothly: service rate remains above 99\% even at 25\% packet loss.
+Figure~\ref{fig:communication-learning} and Table~\ref{tab:communication-rates} depict fleet performance across communication regimes. Under full communication, BID achieves a service rate of \FullBIDServicePercent\% with a mean response delay of \FullBIDResponseMinutes{} minutes, an expired call rate of \FullBIDExpiredPercent\%, and an empirical signed cost gap of \FullBIDCostGapPercent\% relative to centralized heuristic B3. As communication is localized to radius limits ($r_{\mathrm{comm}} \ge 2$), performance remains virtually indistinguishable from full broadcast: service rate holds at \RadiusLimitedBIDServicePercent\% and duplicate arrivals remain at \RadiusLimitedBIDDuplicatePercent\%. Under packet loss ($p_{\mathrm{loss}} = 0.25$), service rate stays resilient at \LossyBIDServicePercent\%, though dropped messages induce a \LossyBIDDuplicatePercent\% duplicate dispatch rate, \LossyBIDExpiredPercent\% call expirations, and a \LossyBIDCostGapPercent\% cost gap to B3.
 
-However, under total communication absence (the ``none'' regime), service rate drops by \FullNoneServiceDifferencePP{} percentage points. Because vehicles cannot observe peer commitments, multiple ambulances independently respond to identical incidents. This induces a duplicate scene arrival rate of 41.1\%, leaving no free units for subsequent calls and increasing expired calls to 17.5\%.
+However, under total communication absence (the ``none'' regime), service rate drops precipitously by \FullNoneServiceDifferencePP{} percentage points to \NoneBIDServicePercent\%, mean response time surges to \NoneBIDResponseMinutes{} minutes, and expired calls rise to \NoneBIDExpiredPercent\%, yielding a \NoneBIDCostGapPercent\% cost penalty over B3. Crucially, as verified analytically and experimentally, the lossy regime at $p_{\mathrm{loss}} = 1.0$ is mathematically and numerically identical to the ``none'' regime by construction. Table~\ref{tab:messages} illuminates the underlying failure mechanism: under BID, coordination depends not only on bid messages but on status updates (free/busy) and rate broadcasts. Under lossy and severed regimes, dropped status messages prevent ambulances from detecting peer assignments. Consequently, multiple units independently identify as winners, generating a \NoneBIDDuplicatePercent\% duplicate arrival rate that wastes fleet capacity and leaves concurrent calls stranded.
 
 \begin{figure}[t]
 \centering
-\includegraphics[width=.48\linewidth]{exp4_communication_service_rate.png}\hfill
-\includegraphics[width=.48\linewidth]{exp4_communication_missed_dispatch_rate.png}\\[-2pt]
-\includegraphics[width=.48\linewidth]{exp4_communication_b3_cost_gap_relative.png}\hfill
-\includegraphics[width=.48\linewidth]{exp5_demand_knowledge_demand_rmse.png}
-\caption{Impact of communication regimes (Exp 4) and demand learning (Exp 5). Service rate measures calls served before deadline; relative cost gaps are signed empirical benchmarks versus centralized heuristic B3.}
+\includegraphics[width=.48\linewidth,height=1.08in]{exp4_communication_service_rate.png}\hfill
+\includegraphics[width=.48\linewidth,height=1.08in]{exp4_communication_b3_cost_gap_relative.png}\\[-2pt]
+\includegraphics[width=.48\linewidth,height=1.08in]{exp5b_learning_rmse_timeseries.png}\hfill
+\includegraphics[width=.48\linewidth,height=1.08in]{cost_breakdown_stacked_n7_n10.png}
+\caption{Key experimental findings across communication, demand learning, and fleet abundance. Top: BID service rate and signed cost gap to B3 across communication regimes (Exp 4). Bottom left: online demand learning RMSE timeseries before and after the midpoint spatial demand shift at $t=3000$ min (Exp 5b). Bottom right: cost decomposition at abundant fleet sizes ($N=7, 10$), illustrating the trade-off between greedy travel minimization and coverage preservation.}
 \label{fig:communication-learning}
 \end{figure}
 
 \subsection{Demand Learning and Non-Stationary Shift}
-In Experiment 5, BID operating with online EMA demand learning achieves an average signed cost gap of \LearnedBIDCostGapPercent\%, closely matching the oracle condition's \OracleBIDCostGapPercent\%. Under stationary demand, root mean square error (RMSE) in rate estimates declines rapidly from 0.85 to below 0.18 calls/hour. Under shifting demand (Exp 5b), where hotspot rates invert at $t=3000$ minutes, the EMA filter detects the step change within two hourly bins and re-converges to low RMSE, confirming that decentralized local estimation provides robust coverage inputs.
+In Experiment 5, BID operating with online EMA demand learning achieves an average signed cost gap of \LearnedBIDCostGapPercent\% and a service rate of \LearnedBIDServicePercent\%, closely matching the oracle condition (\OracleBIDCostGapPercent\% gap, \OracleBIDServicePercent\% service). Under stationary demand, root mean square error (RMSE) in rate estimates declines rapidly and stabilizes at \StationaryLearnedRMSE{} calls/hour.
+
+Figure~\ref{fig:communication-learning} (bottom left) displays the RMSE timeseries for Experiment 5b, where spatial demand undergoes an unannounced non-stationary shift at $t = 3000$ minutes (swapping high-demand and low-demand zones). Prior to the shift, estimation error remains low at \ShiftLearnedRMSE{} calls/hour. At the $t = 3000$ boundary, the EMA filter experiences a brief error spike in the first subsequent hourly bin ($t = 3060$), but re-converges to its low steady-state RMSE within two to three hourly bins. This demonstrates that decentralized local tracking by home bases provides responsive and robust rate estimates without centralized supervision.
 
 \subsection{Fleet Size, Demand Load, and Baseline Comparisons}
-Table~\ref{tab:proposal-results} reports performance across proposal sweeps. In well-resourced regimes ($N=10$, low demand), all policies achieve near-complete service. Under severe capacity stress ($N=3$, 10 calls/hour), B3 and BID significantly outperform uncoordinated baselines B1 and B2. As established theoretically, B1 and B2 achieve numerically identical metrics across all \NMatchedScenarioGroups{} matched groups. The criticality-ordered B2q queue improves critical response times ($K \ge 4$) by prioritizing high-severity emergencies while preventing them from languishing behind low-priority calls.
+Table~\ref{tab:proposal-results} and Table~\ref{tab:policy-comparison} report fleet performance across proposal sweeps and benchmark comparisons. Under severe capacity stress ($N=3$, 10 calls/hour), B3 and BID substantially outperform simple baselines by strategically holding ambulances in high-demand zones to avoid call expirations. Across all \NMatchedScenarioGroups{} matched groups, baselines B1 and B2 yield numerically identical metrics because the positive criticality weight $\alpha K_e > 0$ preserves the argmin over idle ambulances. The criticality-ordered queue policy B2q diverges from B1/B2 only when calls queue; when queues are empty, next-call selection is identical. Under queueing stress, B2q prioritizes high-severity emergencies ($K \ge 4$), maintaining a mean critical response time of \BTwoQMeanCriticalResponseMinutes{} minutes.
+
+Figure~\ref{fig:communication-learning} (bottom right) highlights an instructive finding at abundant fleet sizes ($N=7$ and $N=10$). At $N=7$, greedy baseline B1 achieves a lower total cost (\BOneTotalCostSeven) than centralized B3 (\BThreeTotalCostSeven) and BID (\BIDTotalCostSeven). Decomposing the cost into its four components reveals the exact mechanism: B1 incurs a lower response travel cost of \BOneResponseCostSeven{} (versus \BThreeResponseCostSeven{} for B3 and \BIDResponseCostSeven{} for BID), despite having higher external coverage cost (\BOneExtCoverageCostSeven{} vs \BIDExtCoverageCostSeven) and home demand cost (\BOneHomeDemandCostSeven{} vs \BIDHomeDemandCostSeven). Expiration costs remain near zero across all policies (\BOneExpirationCostSeven{} for B1, \BIDExpirationCostSeven{} for BID, \BThreeExpirationCostSeven{} for B3) because the fleet is sufficient to serve all emergencies. 
+
+At $N=10$, this divergence widens: B1's total cost is \BOneTotalCostTen{} (response cost \BOneResponseCostTen, coverage \BOneExtCoverageCostTen, home \BOneHomeDemandCostTen, expiration \BOneExpirationCostTen) compared with B3's total cost of \BThreeTotalCostTen{} (response \BThreeResponseCostTen, coverage \BThreeExtCoverageCostTen, home \BThreeHomeDemandCostTen, expiration \BThreeExpirationCostTen) and BID's total cost of \BIDTotalCostTen{} (response \BIDResponseCostTen, coverage \BIDExtCoverageCostTen, home \BIDHomeDemandCostTen, expiration \BIDExpirationCostTen). When ambulances are abundant, zone coverage is naturally saturated. Penalizing ambulances for departing their home stations ($\beta R_i + \gamma D_i$) needlessly holds back closer units in favor of distant ones, inflating response delay $\alpha K_e T_i^{\mathrm{resp}}$ without yielding any reduction in expired calls. Consequently, greedy uncoordinated dispatch is cost-optimal under fleet abundance, whereas coordinated coverage preservation is vital under scarcity.
 
 \begin{figure}[t]
 \centering
-\includegraphics[width=.48\linewidth]{exp8_weight_sensitivity_alpha_b3_cost_gap_relative.png}\hfill
-\includegraphics[width=.48\linewidth]{exp8_weight_sensitivity_beta_b3_cost_gap_relative.png}\\[-2pt]
-\includegraphics[width=.48\linewidth]{exp8_weight_sensitivity_gamma_b3_cost_gap_relative.png}
+\includegraphics[width=.32\linewidth,height=0.90in]{exp8_weight_sensitivity_alpha_b3_cost_gap_relative.png}\hfill
+\includegraphics[width=.32\linewidth,height=0.90in]{exp8_weight_sensitivity_beta_b3_cost_gap_relative.png}\hfill
+\includegraphics[width=.32\linewidth,height=0.90in]{exp8_weight_sensitivity_gamma_b3_cost_gap_relative.png}
 \caption{One-factor sensitivity analysis of objective weights $\alpha$ (response delay), $\beta$ (external coverage loss), and $\gamma$ (home demand vulnerability). Points and error bars represent bootstrap 95\% confidence intervals.}
 \label{fig:weight-sensitivity}
 \end{figure}
@@ -212,25 +233,33 @@ Table~\ref{tab:proposal-results} reports performance across proposal sweeps. In 
 Figure~\ref{fig:weight-sensitivity} and Table~\ref{tab:weight-sensitivity} summarize the independent one-factor sensitivity analysis across \NWeightRuns{} runs. Varying response weight $\alpha \in \{0.5, 1.0, 2.0\}$ produces the largest impact on the empirical gap to B3, as higher $\alpha$ shifts priority heavily toward immediate response. In contrast, varying $\beta$ and $\gamma$ over $[4.0, 16.0]$ demonstrates that BID maintains stable service rates and cost profiles over wide weight ranges, indicating low tuning sensitivity.
 
 \input{generated/proposal_results_table.tex}
+%\input{generated/policy_comparison_table.tex}
 \input{generated/communication_table.tex}
+\input{generated/message_table.tex}
 \input{generated/weight_sensitivity_table.tex}
 
 \section{Unilateral Deviation and Author Contributions}
 \subsection{Restricted Unilateral-Deviation Findings}
-In our restricted unilateral-deviation analysis across \NScenarioSeeds{} paired seeds, the maximum observed empirical team payoff improvement across all five agents was $\widehat{\epsilon} = \DeviationMeanImprovement{}$ (95\% bootstrap CI: [\DeviationMeanCILow, \DeviationMeanCIHigh]). Relative to mean baseline cost, this corresponds to an empirical deviation gain of under 0.8\%. Because no tested agent can achieve meaningful cost reductions by deviating to time-only greedy dispatch, all-BID displays strong empirical coordination stability within this restricted strategy space. We emphasize, however, that this test evaluates a specific one-dimensional deviation and does not prove equilibrium over arbitrary dynamic dispatch strategies.
+Table~\ref{tab:deviation} presents the empirical results of our restricted unilateral-deviation test across \NScenarioSeeds{} paired seeds. Under this evaluation, each agent $i$ sequentially tests a selfish deviation to a time-only greedy dispatch rule ($J_i^{\mathrm{dev}} = \alpha K_e T_i^{\mathrm{resp}}$) while all other $N-1$ agents adhere to BID. The overall empirical deviation statistic is $\widehat{\epsilon} = \DeviationMeanImprovement{}$ with a 95\% paired-seed bootstrap confidence interval of [\DeviationMeanCILow, \DeviationMeanCIHigh]. Because the confidence interval comfortably spans zero, the observed empirical gain is statistically indistinguishable from zero. Furthermore, relative to the mean baseline team cost, the maximum relative gain is merely \DeviationRelativeGainPercent\%.
+
+Inspection of individual agents reinforces this stability: no agent achieves a statistically significant positive gain from deviating. In particular, Agent 2 suffers a strongly negative mean payoff change of \AgentTwoDeviationMean{} (95\% CI: [\AgentTwoDeviationCILow, \AgentTwoDeviationCIHigh], relative change \AgentTwoRelativeGainPercent\%), as selfish greedy responses strand its vehicle away from high-priority demand centers.
+
+\noindent\textbf{Formal Disclaimer}: We emphasize that this analysis represents a restricted empirical evaluation against a specific one-dimensional class of myopic response-time deviations. It does not constitute a formal proof of Nash equilibrium over arbitrary dynamic or non-stationary dispatch strategies.
+
+\input{generated/deviation_table.tex}
 
 \subsection{Team Contributions}
 Table~\ref{tab:contributions} summarizes the division of responsibilities and task status for the project team. All code, configuration files, test suites, and report generation pipelines are open-source and publicly verifiable at:
-\begin{center}
+\begin{center}\vspace{-4pt}
 \url{https://github.com/Tanmai1808/FAI}
-\end{center}
+\vspace{-4pt}\end{center}
 
 \begin{table}[h]
-\centering\small
-\setlength{\tabcolsep}{5pt}
+\centering\scriptsize
+\setlength{\tabcolsep}{4pt}
 \caption{Team member contributions and project deliverables.}
 \label{tab:contributions}
-\begin{tabular}{p{1.7in}p{3.5in}p{0.8in}}
+\begin{tabular}{p{1.6in}p{3.35in}p{0.8in}}
 \toprule
 Member & Assigned Tasks and Deliverables & Status \\
 \midrule
@@ -242,9 +271,15 @@ Reddyboina Triveni (24110295) & Centralized B3 heuristic, experiment runner, met
 \end{table}
 
 \section{Discussion, Limitations, and Conclusion}
+\subsection{Decentralized Coordination Findings}
+Our empirical findings directly answer the central question of this investigation: \textit{how does decentralized coordination perform under limited communication and unknown demand compared with simple baselines and a centralized heuristic?}
+The results demonstrate that market-based bidding (BID) provides an effective decentralized dispatch mechanism that closely tracks the centralized Hungarian heuristic (B3), maintaining an empirical cost gap of \FullBIDCostGapPercent\% under full communication. Under capacity stress ($N=3$, 10 calls/hour), BID and B3 decisively outperform simple baselines by preventing myopic fleet depletion in demand hotspots. Decentralized local demand learning effectively bridges the information gap, matching oracle knowledge within a \LearnedBIDCostGapPercent\% cost gap and autonomously tracking non-stationary spatial shifts.
+
+However, decentralized coordination exhibits two vital boundary conditions. First, coordination requires communication: while BID tolerates spatial radius limits and moderate packet loss, the total absence of communication induces severe duplicate dispatches (\NoneBIDDuplicatePercent\%) and service degradation (\NoneBIDServicePercent\% service, a \FullNoneServiceDifferencePP{} percentage point drop). Second, coordination is regime-dependent: under fleet abundance ($N \ge 7$), greedy dispatch (B1) outperforms both BID and B3 because coverage penalties become redundant when expirations are eliminated, making response-travel minimization cost-optimal.
+
 \subsection{Limitations of the Study}
 While the simulation captures key fleet trade-offs, several simplifications must be noted:
-\begin{enumerate}\itemsep1pt
+\begin{enumerate}\itemsep0pt\parskip0pt\topsep1pt
 \item \textbf{Synthetic Grid Topology}: Experiments run on an idealized $5\times 5$ Manhattan grid with uniform travel times, omitting irregular road networks, one-way streets, and topographic barriers.
 \item \textbf{Deterministic Travel and Zero Message Latency}: Vehicles travel at constant speed without congestion, intersection delays, or traffic fluctuations. Peer packets experience loss or range truncation but zero propagation latency.
 \item \textbf{Simplified Clinical Workflow}: On-scene service is modeled as a fixed 20-minute duration; hospital patient transfer, turnaround delays, and vehicle decontamination are omitted. Severity levels are discrete $K \in \{1, \ldots, 5\}$.
@@ -255,6 +290,9 @@ Consequently, the quantitative results reported here characterize the relative b
 \subsection{Conclusion}
 This study evaluated decentralized ambulance dispatch under communication constraints and unknown spatial demand. The market-based BID mechanism successfully balances immediate response against future availability, staying within single-digit percentage bounds of a centralized Hungarian heuristic. Peer communication is essential: while the protocol tolerates localized radius limits and moderate packet drops, the complete absence of communication leads to severe duplicate dispatches and capacity collapse. Decentralized online demand learning effectively bridges the information gap, matching oracle knowledge across stationary and shifting demand.
 
+{\footnotesize
+\setlength{\bibsep}{0.5pt}
 \bibliographystyle{unsrt}
 \bibliography{references}
+}
 \end{document}
