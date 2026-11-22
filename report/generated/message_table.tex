@@ -1,0 +1,18 @@
+\begin{table}[t]
+\centering\scriptsize
+\setlength{\tabcolsep}{2.5pt}
+\caption{Message transmission by communication regime and message kind under BID policy. Cells show mean count per scenario across paired seeds.}
+\label{tab:messages}
+\begin{tabular}{lrrrrrrrrrrrr}
+\toprule
+& \multicolumn{3}{c}{Bid Messages} & \multicolumn{3}{c}{Status Messages} & \multicolumn{3}{c}{Rate Messages} & \multicolumn{3}{c}{Total Messages} \\
+\cmidrule(lr){2-4} \cmidrule(lr){5-7} \cmidrule(lr){8-10} \cmidrule(lr){11-13}
+Regime & Sent & Deliv. & Drop & Sent & Deliv. & Drop & Sent & Deliv. & Drop & Sent & Deliv. & Drop \\
+\midrule
+full & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 17252 & 17252 & 0 \\
+radius-limited & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 17196 & 17196 & 0 \\
+lossy & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 17462 & 13094 & 4368 \\
+none & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 \\
+\bottomrule
+\end{tabular}
+\end{table}

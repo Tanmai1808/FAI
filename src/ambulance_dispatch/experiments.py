@@ -71,6 +71,20 @@ def _family(
             )
 
 
+FAMILY_NAMES: dict[str, str] = {
+    "exp1": "exp1_ambulance_count",
+    "exp2": "exp2_total_demand",
+    "exp3": "exp3_demand_pattern",
+    "exp4": "exp4_communication",
+    "exp4b": "exp4b_communication_radius",
+    "exp4c": "exp4c_communication_loss",
+    "exp5": "exp5_demand_knowledge",
+    "exp5b": "exp5b_learning_shifting",
+    "exp6": "exp6_criticality_mix",
+    "exp7": "exp7_weight_tradeoff",
+}
+
+
 def build_experiment_cases(
     base: ScenarioConfig,
     seeds: Iterable[int],
@@ -80,18 +94,7 @@ def build_experiment_cases(
     seed_list = tuple(int(seed) for seed in seeds)
     if not seed_list:
         raise ValueError("at least one seed is required")
-    family_names = {
-        "exp1": "exp1_ambulance_count",
-        "exp2": "exp2_total_demand",
-        "exp3": "exp3_demand_pattern",
-        "exp4": "exp4_communication",
-        "exp4b": "exp4b_communication_radius",
-        "exp4c": "exp4c_communication_loss",
-        "exp5": "exp5_demand_knowledge",
-        "exp5b": "exp5b_learning_shifting",
-        "exp6": "exp6_criticality_mix",
-        "exp7": "exp7_weight_tradeoff",
-    }
+    family_names = FAMILY_NAMES
     if selected is not None and not selected.issubset(set(family_names)):
         raise ValueError("experiment selection must use exp1 through exp7, exp4b, exp4c, exp5b")
     selected_families = {family_names[name] for name in selected} if selected is not None else None
@@ -293,7 +296,7 @@ def run_experiment_suite(
         "base_config": _config_dict(base),
         "experiment_count": len({case.experiment for case in cases}),
         "case_count": len(cases),
-        "selected_experiments": sorted(selected) if selected is not None else sorted(family_names.keys()),
+        "selected_experiments": sorted(selected) if selected is not None else sorted(FAMILY_NAMES.keys()),
         "case_semantics": "one-factor-at-a-time; identical scenario seeds are reused across methods",
     }
     (output / "manifest.json").write_text(json.dumps(manifest, indent=2, sort_keys=True), encoding="utf-8")

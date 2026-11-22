@@ -1,0 +1,33 @@
+\begin{table*}[t]
+\centering\scriptsize
+\setlength{\tabcolsep}{3pt}
+\caption{Five-policy comparison across benchmark configurations where B2q was evaluated. Cells show mean [95\% bootstrap CI] across matched scenario seeds.}
+\label{tab:policy-comparison}
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{llrrrrrrr}
+\toprule
+Experiment & Policy & Total Cost & Mean Resp. (min) & Median (min) & P90 (min) & Crit. Resp. (min) & Service (\%) & Expired (\%) \\
+\midrule
+Exp 1: Fleet Size & B1 & 10073.1 [8203.8,12130.3] & 5.8 [4.8,6.9] & -- & -- & 4.3 [3.7,4.8] & 97.0\% [95.9,98.0] & -- \\
+Exp 1: Fleet Size & B2 & 10073.1 [8203.8,12130.3] & 5.8 [4.8,6.9] & -- & -- & 4.3 [3.7,4.8] & 97.0\% [95.9,98.0] & -- \\
+Exp 1: Fleet Size & B3 & 8340.0 [7021.0,9719.6] & 4.3 [3.8,4.8] & -- & -- & 3.8 [3.4,4.1] & 97.8\% [96.9,98.5] & -- \\
+Exp 1: Fleet Size & BID & 8831.5 [7429.6,10364.7] & 5.0 [4.4,5.8] & -- & -- & 4.2 [3.8,4.6] & 98.4\% [97.8,99.0] & -- \\
+\midrule
+Exp 2: Total Demand & B1 & 25839.0 [18636.2,33173.5] & 7.8 [6.5,9.2] & -- & -- & 5.7 [5.0,6.4] & 95.8\% [94.4,97.2] & -- \\
+Exp 2: Total Demand & B2 & 25839.0 [18636.2,33173.5] & 7.8 [6.5,9.2] & -- & -- & 5.7 [5.0,6.4] & 95.8\% [94.4,97.2] & -- \\
+Exp 2: Total Demand & B3 & 19653.2 [14499.8,24947.5] & 5.1 [4.7,5.5] & -- & -- & 4.5 [4.3,4.7] & 96.7\% [95.5,97.8] & -- \\
+Exp 2: Total Demand & BID & 22335.3 [16262.7,28607.4] & 6.6 [5.7,7.5] & -- & -- & 5.3 [4.9,5.8] & 97.6\% [96.8,98.4] & -- \\
+\midrule
+Exp 6: Criticality Mix & B1 & 9972.2 [9295.8,10706.9] & 4.7 [4.5,4.8] & -- & -- & 4.5 [4.3,4.6] & 99.3\% [99.1,99.5] & -- \\
+Exp 6: Criticality Mix & B2 & 9972.2 [9295.8,10706.9] & 4.7 [4.5,4.8] & -- & -- & 4.5 [4.3,4.6] & 99.3\% [99.1,99.5] & -- \\
+Exp 6: Criticality Mix & B3 & 9002.7 [8382.2,9645.8] & 4.4 [4.3,4.4] & -- & -- & 4.2 [4.1,4.3] & 99.3\% [99.1,99.5] & -- \\
+Exp 6: Criticality Mix & BID & 9071.5 [8448.3,9740.9] & 4.4 [4.4,4.5] & -- & -- & 4.3 [4.2,4.4] & 99.5\% [99.4,99.7] & -- \\
+\midrule
+\textbf{Pooled Benchmark} & \textbf{B1} & 14772.6 [12314.2,17446.8] & 6.1 [5.4,6.7] & -- & -- & 4.8 [4.5,5.1] & 97.3\% [96.7,98.0] & -- \\
+\textbf{Pooled Benchmark} & \textbf{B2} & 14772.6 [12314.2,17446.8] & 6.1 [5.4,6.7] & -- & -- & 4.8 [4.5,5.1] & 97.3\% [96.7,98.0] & -- \\
+\textbf{Pooled Benchmark} & \textbf{B3} & 11932.8 [10171.2,13825.9] & 4.6 [4.3,4.8] & -- & -- & 4.1 [4.0,4.3] & 97.9\% [97.4,98.4] & -- \\
+\textbf{Pooled Benchmark} & \textbf{BID} & 12954.6 [10859.5,15151.2] & 5.3 [4.9,5.7] & -- & -- & 4.6 [4.3,4.8] & 98.5\% [98.2,98.9] & -- \\
+\bottomrule
+\end{tabular}
+}
+\end{table*}
