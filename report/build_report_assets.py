@@ -663,6 +663,102 @@ def write_macros(
         b2_crit = sum(float(r["critical_mean_response_minutes"]) for r in b2_rows) / len(b2_rows)
         macros.append(macro("BTwoMeanCriticalResponseMinutes", f"{b2_crit:.1f}"))
 
+    # --- B1/B2 paired group count ---
+    from collections import defaultdict as _dd
+    _by_grp: dict = _dd(set)
+    for _r in raw:
+        if _r.get("policy") in ("B1", "B2"):
+            _by_grp[(_r.get("experiment"), _r.get("level"), _r.get("seed"))].add(_r.get("policy"))
+    _n_b1b2 = sum(1 for _pols in _by_grp.values() if {"B1", "B2"}.issubset(_pols))
+    macros.append(macro("NBOneBTwoMatchedGroups", str(_n_b1b2)))
+
+    # --- B2q metrics under overload (n=3 fleet and high demand) ---
+    for _exp, _lvl, _suf in [
+        ("exp1_ambulance_count", "n=3", "Three"),
+        ("exp2_total_demand", "high:10/h", "TenCalls"),
+    ]:
+        for _pol, _pn in [("B1", "BOne"), ("B2q", "BTwoQ")]:
+            for _met, _mn in [("critical_service_rate", "CritService"), ("expired_rate", "ExpiredRate")]:
+                _v = summary_value(_exp, _lvl, _pol, _met)
+                if _v is not None:
+                    macros.append(macro(f"{_pn}{_mn}{_suf}", f"{_v * 100:.1f}"))
+            _vr = summary_value(_exp, _lvl, _pol, "critical_mean_response_minutes")
+            if _vr is not None:
+                macros.append(macro(f"{_pn}CritRespMinutes{_suf}", f"{_vr:.2f}"))
+
+    # --- Radius sweep (exp4b) macros ---
+    for _r_val, _rn in [("r=2", "Two"), ("r=4", "Four"), ("r=6", "Six"), ("r=8", "Eight"), ("r=12", "Twelve")]:
+        _svc = summary_value("exp4b_communication_radius", _r_val, "BID", "service_rate")
+        _dup = summary_value("exp4b_communication_radius", _r_val, "BID", "duplicate_rate")
+        if _svc is not None:
+            macros.append(macro(f"Radius{_rn}ServicePercent", f"{_svc * 100:.1f}"))
+        if _dup is not None:
+            macros.append(macro(f"Radius{_rn}DuplicatePercent", f"{_dup * 100:.1f}"))
+
+    # --- Loss sweep (exp4c) macros ---
+    for _p_val, _pn in [
+        ("p=0", "Zero"), ("p=0.1", "Ten"), ("p=0.25", "TwentyFive"),
+        ("p=0.5", "Fifty"), ("p=0.75", "SeventyFive"), ("p=1", "Hundred"),
+    ]:
+        _svc = summary_value("exp4c_communication_loss", _p_val, "BID", "service_rate")
+        _dup = summary_value("exp4c_communication_loss", _p_val, "BID", "duplicate_rate")
+        if _svc is not None:
+            macros.append(macro(f"Loss{_pn}ServicePercent", f"{_svc * 100:.1f}"))
+        if _dup is not None:
+            macros.append(macro(f"Loss{_pn}DuplicatePercent", f"{_dup * 100:.1f}"))
+
+    # --- Pooled cost benchmarks (Exp1 + Exp2 + Exp6) ---
+    _pooled_exps = {"exp1_ambulance_count", "exp2_total_demand", "exp6_criticality_mix"}
+    _pool_b3 = [float(_r["total_cost"]) for _r in raw if _r.get("experiment") in _pooled_exps and _r.get("policy") == "B3"]
+    _pool_bid = [float(_r["total_cost"]) for _r in raw if _r.get("experiment") in _pooled_exps and _r.get("policy") == "BID"]
+    if _pool_b3:
+        macros.append(macro("PooledBThreeTotalCost", f"{sum(_pool_b3) / len(_pool_b3):.1f}"))
+    if _pool_bid:
+        macros.append(macro("PooledBIDTotalCost", f"{sum(_pool_bid) / len(_pool_bid):.1f}"))
+
+    # --- RMSE shifting timeseries macros (exp5b) ---
+    _rmse_ts_path = target.parent.parent / "results" / "final_30_seed" / "learning_rmse_timeseries.csv"
+    # Also try relative to the target's grandparent run_dir via the summary path
+    # summary is loaded from run_dir; we locate it via the summary CSV's path context.
+    # Fallback: search relative to this file's location.
+    _rmse_ts_candidates = [
+        _rmse_ts_path,
+        Path(__file__).parent.parent / "results" / "final_30_seed" / "learning_rmse_timeseries.csv",
+    ]
+    _rmse_ts_file = next((p for p in _rmse_ts_candidates if p.exists()), None)
+    if _rmse_ts_file:
+        import csv as _csv_mod
+        _rmse_rows = [
+            _row for _row in _csv_mod.DictReader(_rmse_ts_file.open(encoding="utf-8"))
+            if _row.get("experiment") == "exp5b_learning_shifting"
+            and _row.get("policy") == "BID"
+            and _row.get("level") == "learned"
+        ]
+        if _rmse_rows:
+            from collections import defaultdict as _dd2
+            _by_t: dict = _dd2(list)
+            for _row in _rmse_rows:
+                _by_t[float(_row["time_minutes"])].append(float(_row["rmse"]))
+            _t_means = {_t: sum(_vs) / len(_vs) for _t, _vs in _by_t.items()}
+            _pre_vals = [_t_means[_t] for _t in _t_means if _t <= 3000]
+            _pre_mean = sum(_pre_vals) / len(_pre_vals) if _pre_vals else None
+            _post = sorted((_t, _t_means[_t]) for _t in _t_means if _t > 3000)
+            _peak_t, _peak_v = max(_post, key=lambda x: x[1]) if _post else (None, None)
+            _rec_t, _rec_v = None, None
+            if _pre_mean:
+                for _t, _v in _post:
+                    if _v <= _pre_mean * 1.10:
+                        _rec_t, _rec_v = _t, _v
+                        break
+            if _pre_mean is not None:
+                macros.append(macro("ShiftPreShiftMeanRMSE", f"{_pre_mean:.2f}"))
+            if _peak_v is not None:
+                macros.append(macro("ShiftPeakRMSE", f"{_peak_v:.3f}"))
+                macros.append(macro("ShiftPeakMinute", f"{_peak_t:.0f}"))
+            if _rec_t is not None:
+                macros.append(macro("ShiftRecoveryMinute", f"{_rec_t:.0f}"))
+                macros.append(macro("ShiftRecoveryRMSE", f"{_rec_v:.2f}"))
+
     target.write_text("\n".join(macros) + "\n", encoding="utf-8")
 
 
