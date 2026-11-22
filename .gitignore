@@ -34,3 +34,4 @@ results/quick_*
 results/pilot_*
 results/*_test_*
 results/test_*
+results/final_*/

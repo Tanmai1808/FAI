@@ -12,7 +12,7 @@
 \usepackage{caption}
 \usepackage[numbers,sort&compress]{natbib}
 \usepackage[hidelinks]{hyperref}
-\renewcommand{\headeright}{CS329 Project Report}
+\renewcommand{\headeright}{Multi-Agent Systems Project Report}
 \renewcommand{\undertitle}{Project Implementation Report}
 \renewcommand{\shorttitle}{Ambulance Dispatch under Limited Communication}
 \captionsetup{font=small,labelfont=bf}
@@ -22,13 +22,13 @@
 \title{Decentralized Ambulance Dispatch under Limited Communication and Unknown Demand}
 \author{Lingala Hasini (24110186) \And Poladasu Tanmai Manjula (24110261) \And Reddyboina Triveni (24110295)\\[3pt]
 Indian Institute of Technology Gandhinagar}
-\date{CS329 Multi-Agent Systems}
+\date{Multi-Agent Systems Course Project, IIT Gandhinagar}
 
 \begin{document}
 \maketitle
 
 \begin{abstract}
-Emergency medical service (EMS) dispatch presents a fundamental spatial trade-off: committing an available ambulance to an active emergency immediately reduces response delay, but simultaneously vacates that vehicle's coverage sector, exposing future local arrivals to extended delays or expiry. This paper investigates decentralized multi-agent coordination for urban ambulance dispatch when fleet units operate under constrained peer communication and possess incomplete, non-stationary knowledge of spatial demand. We formalize urban dispatch as a cooperative Decentralized Partially Observable Markov Decision Process (Dec-POMDP) and evaluate five dispatch mechanisms: arrival-first nearest assignment (B1), criticality-weighted nearest assignment (B2, which is mathematically equivalent to B1 under nearest candidate selection), criticality-first queue assignment (B2q), a centralized Hungarian assignment and greedy repositioning heuristic (B3), and a decentralized market-inspired bidding mechanism (BID). Across paired-seed simulation experiments on a synthetic city topology, we examine three core research questions: (i) how closely decentralized bidding approaches centralized heuristic performance under varying fleet sizes and arrival rates, (ii) how peer communication constraints---full broadcast, range-limited radius, lossy packet drop, and total communication absence---affect coordination stability and duplicate dispatches, and (iii) whether online exponential moving average demand learning can recover oracle demand performance. Our empirical results demonstrate that BID achieves total team costs within single-digit percentage bounds of centralized heuristic B3 under full communication and degrades gracefully under localized radius and packet loss. Under total communication absence, however, independent dispatch causes widespread duplicate scene arrivals, rapidly exhausting fleet capacity. Finally, online demand learning accurately converges to underlying arrival schedules, effectively matching oracle performance.
+Emergency medical service (EMS) dispatch presents a fundamental spatial trade-off: committing an available ambulance to an active emergency immediately reduces response delay, but simultaneously vacates that vehicle's coverage sector, exposing future local arrivals to extended delays or expiry. This paper investigates decentralized multi-agent coordination for urban ambulance dispatch when fleet units operate under constrained peer communication and possess incomplete, non-stationary knowledge of spatial demand. We formalize urban dispatch as a cooperative Decentralized Partially Observable Markov Decision Process (Dec-POMDP) and evaluate five dispatch mechanisms: arrival-first nearest assignment (B1), criticality-weighted nearest assignment (B2, which is mathematically equivalent to B1 under nearest candidate selection), criticality-first queue assignment (B2q), a centralized Hungarian assignment and greedy repositioning heuristic (B3), and a decentralized market-inspired bidding mechanism (BID). Across paired-seed simulation experiments on a synthetic city topology, we examine three core research questions: (i) how closely decentralized bidding approaches centralized heuristic performance under varying fleet sizes and arrival rates, (ii) how peer communication constraints---full broadcast, range-limited radius, lossy packet drop, and total communication absence---affect coordination stability and duplicate dispatches, and (iii) whether online exponential moving average demand learning can recover oracle demand performance. Our empirical results across matched scenarios indicate that BID coordinates effectively under full communication, maintaining costs comparable to the centralized B3 heuristic while degrading gracefully under localized transmission radius limits and moderate packet loss. In contrast, the complete absence of peer communication induces uncoordinated duplicate scene commitments, exhausting vehicle availability and driving up call expirations. Furthermore, online decentralized demand learning successfully adapts to both stationary and shifting spatial arrival patterns, approaching oracle demand benchmarks.
 \end{abstract}
 
 \keywords{multi-agent systems \and ambulance dispatch \and cooperative Dec-POMDP \and market-based coordination \and communication constraints \and online demand learning}
@@ -55,10 +55,10 @@ We model the urban service region as a connected undirected grid graph $G=(V, E)
 \toprule
 Symbol & Description & Symbol & Description \\
 \midrule
-$N$ & Fleet size ($N \in \{3,5,7,10\}$, default 5) & $K_e$ & Incident severity level ($K_e \in \{1,2,3\}$) \\
-$Z$ & Grid zones ($|Z|=25$, $5\times 5$ grid) & $s, B_i(e)$ & Scene time ($15$ min), busy time ($2\tau + s$) \\
-$\tau(u, v)$ & Shortest-path travel minutes & $r_{\mathrm{cov}}$ & Spatial coverage radius ($4$ min) \\
-$\lambda_z(t), \Lambda(t)$ & Zone rate, aggregate rate ($2.5, 5, 10$ /h) & $\alpha, \beta, \gamma, \rho$ & Team cost weights ($1.0, 8.0, 8.0, 10.0$) \\
+$N$ & Fleet size ($N \in \{3,5,7,10\}$, default 5) & $K_e$ & Incident severity level ($K_e \in \{1,\ldots,5\}$) \\
+$Z$ & Grid zones ($|Z|=25$, $5\times 5$ grid) & $s, B_i(e)$ & Scene time ($20$ min), busy time ($2\tau + s$) \\
+$\tau(u, v)$ & Shortest-path travel minutes & $r_{\mathrm{cov}}$ & Spatial coverage radius ($8$ min) \\
+$\lambda_z(t), \Lambda(t)$ & Zone rate, aggregate rate ($2.5, 5, 10$ /h) & $\alpha, \beta, \gamma, \rho$ & Team cost weights ($1.0, 8.0, 8.0, 120.0$) \\
 $e$ & Call $(\ell_e, K_e, t_e, T_e^{\mathrm{dead}})$ & $G_{B3}(\pi)$ & Signed empirical cost gap to heuristic B3 \\
 \bottomrule
 \end{tabular}
@@ -88,15 +88,15 @@ In cooperative team games where all agents share the common payoff $V(\boldsymbo
 \textit{Proof Sketch.} In a Dec-POMDP, any decentralized policy $\boldsymbol{\pi}$ restricts each agent's decision $a_{i,t}$ to be measurable with respect to its local history $\mathcal{H}_{i,t}$. A centralized controller observes the complete global history $\mathcal{S}_t \supseteq \bigcup_{i} \mathcal{H}_{i,t}$. Because factorized decentralized policies form a restricted subclass of centralized policies, the supremum over the unconstrained centralized space satisfies $V^* = \sup_{\pi^{\mathrm{cent}}} V(\pi^{\mathrm{cent}}) \ge V(\boldsymbol{\pi})$ for all decentralized $\boldsymbol{\pi}$. \hfill $\blacksquare$
 
 \subsection{Demand, Coverage, and Four-Term Cost Function}
-Emergency calls arrive across zones according to independent Poisson processes with rate $\lambda_z(t)$. The probability of $k$ arrivals in zone $z$ over $\Delta t$ is $\mathbb{P}(k) = (\lambda_z(t)\Delta t)^k e^{-\lambda_z(t)\Delta t} / k!$, with aggregate rate $\Lambda(t) = \sum_{z} \lambda_z(t)$. Each incident location $\ell_e$ is drawn from $p(z) = \lambda_z / \Lambda$, and severity $K_e \in \{1, 2, 3\}$ from categorical distribution $p_K$. Higher criticality entails a shorter response deadline $T_e^{\mathrm{dead}}$.
+Emergency calls arrive across zones according to independent Poisson processes with rate $\lambda_z(t)$. The probability of $k$ arrivals in zone $z$ over $\Delta t$ is $\mathbb{P}(k) = (\lambda_z(t)\Delta t)^k e^{-\lambda_z(t)\Delta t} / k!$, with aggregate rate $\Lambda(t) = \sum_{z} \lambda_z(t)$. Each incident location $\ell_e$ is drawn from $p(z) = \lambda_z / \Lambda$, and severity $K_e \in \{1, \ldots, 5\}$ from categorical distribution $p_K = (0.35, 0.25, 0.20, 0.13, 0.07)$ with deadlines $(60, 45, 30, 20, 15)$ minutes. Higher criticality entails a shorter response deadline $T_e^{\mathrm{dead}}$.
 
-For idle ambulances $I_{\mathrm{free}} \subseteq I$ at $\{x_j\}_{j\in I_{\mathrm{free}}}$, zone coverage is $\operatorname{cov}(I_{\mathrm{free}}, z) = \mathbf{1}\left[\min_{j \in I_{\mathrm{free}}} \tau(x_j, z) \le r_{\mathrm{cov}}\right]$. Marginal coverage loss from dispatching ambulance $i \in I_{\mathrm{free}}$ is $L_i(z; I_{\mathrm{free}}) = \operatorname{cov}(I_{\mathrm{free}}, z) - \operatorname{cov}(I_{\mathrm{free}} \setminus \{i\}, z)$. When ambulance $i$ is dispatched to call $e$, total round-trip busy commitment is $B_i(e) = 2\tau(x_i, \ell_e) + s$, and response delay is $T_i^{\mathrm{resp}} = (t_{\mathrm{disp}} - t_e) + \tau(x_i, \ell_e)$. The four-component team cost function is:
+For idle ambulances $I_{\mathrm{free}} \subseteq I$ at $\{x_j\}_{j\in I_{\mathrm{free}}}$, zone coverage is $\operatorname{cov}(I_{\mathrm{free}}, z) = \mathbf{1}\left[\min_{j \in I_{\mathrm{free}}} \tau(x_j, z) \le r_{\mathrm{cov}}\right]$ with threshold $r_{\mathrm{cov}} = 8.0$ minutes. Marginal coverage loss from dispatching ambulance $i \in I_{\mathrm{free}}$ is $L_i(z; I_{\mathrm{free}}) = \operatorname{cov}(I_{\mathrm{free}}, z) - \operatorname{cov}(I_{\mathrm{free}} \setminus \{i\}, z)$. When ambulance $i$ is dispatched to call $e$, total round-trip busy commitment is $B_i(e) = 2\tau(x_i, \ell_e) + s$ ($s = 20.0$ min), and response delay is $T_i^{\mathrm{resp}} = (t_{\mathrm{disp}} - t_e) + \tau(x_i, \ell_e)$. The four-component team cost function is:
 \begin{align}
 c(e, i) &= \alpha K_e T_i^{\mathrm{resp}} + \beta R_i(e) + \gamma D_i(e), \label{eq:dispatch-cost}\\
 R_i(e) &= B_i(e) \sum_{z \ne h_i} \lambda_z(t) L_i(z; I_{\mathrm{free}}), \quad D_i(e) = B_i(e) \lambda_{h_i}(t), \label{eq:terms}\\
-C(\boldsymbol{\pi}) &= \sum_{(e, i) \in \mathcal{D}(\boldsymbol{\pi})} c(e, i) + \rho \sum_{e \in \mathcal{E}_{\mathrm{exp}}} K_e T_{\mathrm{exp}}. \label{eq:total-cost}
+C(\boldsymbol{\pi}) &= \sum_{(e, i) \in \mathcal{D}(\boldsymbol{\pi})} c(e, i) + \rho \sum_{e \in \mathcal{E}_{\mathrm{exp}}} K_e T_{\mathrm{exp}}, \label{eq:total-cost}
 \end{align}
-$R_i(e)$ measures expected external demand loss caused by removing ambulance $i$ from the idle pool over $B_i(e)$. $D_i(e)$ measures home station vulnerability during absence. Because $R_i(e)$ sums strictly over $z \ne h_i$, external coverage and home demand operate over disjoint zone sets and do not double-count. $\mathcal{E}_{\mathrm{exp}}$ denotes calls that expire unserved before deadline $T_e^{\mathrm{dead}}$, penalized at $\rho K_e T_{\mathrm{exp}}$.
+with default weights $\alpha=1.0, \beta=8.0, \gamma=8.0, \rho=120.0$. $R_i(e)$ measures expected external demand loss caused by removing ambulance $i$ from the idle pool over $B_i(e)$. $D_i(e)$ measures home station vulnerability during absence. Because $R_i(e)$ sums strictly over $z \ne h_i$, external coverage and home demand operate over disjoint zone sets and do not double-count. $\mathcal{E}_{\mathrm{exp}}$ denotes calls that expire unserved before deadline $T_e^{\mathrm{dead}}$, penalized at $\rho K_e T_{\mathrm{exp}}$.
 
 \subsection{Definition 6: Empirical Signed Cost Gap}
 Because B3 is a Hungarian assignment heuristic rather than a certified optimum, the performance comparison is defined as an empirical signed cost gap:
@@ -170,7 +170,7 @@ Peer communication operates over four directed message regimes:
 
 \noindent\textbf{Operational Details}: (i) Repositioning travel is uncharged in the objective cost. (ii) Coverage considers idle units only. (iii) Return destination after scene service is the ambulance's home base $h_i$. (iv) \textit{Duplicate scene arrivals} occur under partial or absent communication when multiple ambulances independently determine they are the winner; response time is recorded on the \textit{first} arrival, while subsequent arrivals waste fleet capacity. (v) \textit{Expired calls} are calls unreached before their deadline, distinct from unassigned calls.
 
-\noindent\textbf{Online Demand Learning}: Each zone $z$ is monitored by its nearest home base $h_i$. At hourly intervals $\Delta = 60$ min, owner $i$ updates its rate estimate via exponential moving average: $\widehat{\lambda}_{z, b} = (1 - \eta)\widehat{\lambda}_{z, b-1} + \eta N_{z, b}/\Delta$ ($\eta = 0.3$), and broadcasts updates. In the \textit{oracle} condition, agents access true ground-truth rates $\lambda_z(t)$.
+\noindent\textbf{Online Demand Learning}: Each zone $z$ is monitored by its nearest home base $h_i$. At hourly intervals $\Delta = 60$ min, owner $i$ updates its rate estimate via exponential moving average: $\widehat{\lambda}_{z, b} = (1 - \eta)\widehat{\lambda}_{z, b-1} + \eta N_{z, b}/\Delta$ ($\eta = 0.25$), and broadcasts updates. In the \textit{oracle} condition, agents access true ground-truth rates $\lambda_z(t)$.
 
 \subsection{Restricted Unilateral-Deviation Analysis}
 To evaluate whether all-BID forms an empirical $\epsilon$-Nash equilibrium against local myopic deviations, we replace agent $i$'s bid score with a naive response-time-only rule $J_i^{\mathrm{dev}}(e) = \alpha K_e T_i^{\mathrm{resp}}$, keeping all other $N-1$ agents on BID. Across paired seeds $s$, we compute team gain $\Delta_i(s) = C_0(s) - C_i(s)$. The empirical deviation statistic is $\widehat{\epsilon} = \max_{i \in I} \bar{\Delta}_i = \max_{i} \left( \frac{1}{S} \sum_{s=1}^S [C_0(s) - C_i(s)] \right)$, with 95\% confidence intervals computed via paired-seed bootstrap (2,000 resamples).
@@ -197,7 +197,7 @@ However, under total communication absence (the ``none'' regime), service rate d
 In Experiment 5, BID operating with online EMA demand learning achieves an average signed cost gap of \LearnedBIDCostGapPercent\%, closely matching the oracle condition's \OracleBIDCostGapPercent\%. Under stationary demand, root mean square error (RMSE) in rate estimates declines rapidly from 0.85 to below 0.18 calls/hour. Under shifting demand (Exp 5b), where hotspot rates invert at $t=3000$ minutes, the EMA filter detects the step change within two hourly bins and re-converges to low RMSE, confirming that decentralized local estimation provides robust coverage inputs.
 
 \subsection{Fleet Size, Demand Load, and Baseline Comparisons}
-Table~\ref{tab:proposal-results} reports performance across proposal sweeps. In well-resourced regimes ($N=10$, low demand), all policies achieve near-complete service. Under severe capacity stress ($N=3$, 10 calls/hour), B3 and BID significantly outperform uncoordinated baselines B1 and B2. As established theoretically, B1 and B2 achieve numerically identical metrics across all \NMatchedScenarioGroups{} matched groups. The criticality-ordered B2q queue improves critical response times ($K=3$) by 14\% over B1 by preventing high-severity calls from languishing behind low-priority calls.
+Table~\ref{tab:proposal-results} reports performance across proposal sweeps. In well-resourced regimes ($N=10$, low demand), all policies achieve near-complete service. Under severe capacity stress ($N=3$, 10 calls/hour), B3 and BID significantly outperform uncoordinated baselines B1 and B2. As established theoretically, B1 and B2 achieve numerically identical metrics across all \NMatchedScenarioGroups{} matched groups. The criticality-ordered B2q queue improves critical response times ($K \ge 4$) by prioritizing high-severity emergencies while preventing them from languishing behind low-priority calls.
 
 \begin{figure}[t]
 \centering
@@ -247,7 +247,7 @@ While the simulation captures key fleet trade-offs, several simplifications must
 \begin{enumerate}\itemsep1pt
 \item \textbf{Synthetic Grid Topology}: Experiments run on an idealized $5\times 5$ Manhattan grid with uniform travel times, omitting irregular road networks, one-way streets, and topographic barriers.
 \item \textbf{Deterministic Travel and Zero Message Latency}: Vehicles travel at constant speed without congestion, intersection delays, or traffic fluctuations. Peer packets experience loss or range truncation but zero propagation latency.
-\item \textbf{Simplified Clinical Workflow}: On-scene service is modeled as a fixed 15-minute duration; hospital patient transfer, turnaround delays, and vehicle decontamination are omitted.
+\item \textbf{Simplified Clinical Workflow}: On-scene service is modeled as a fixed 20-minute duration; hospital patient transfer, turnaround delays, and vehicle decontamination are omitted. Severity levels are discrete $K \in \{1, \ldots, 5\}$.
 \item \textbf{Heuristic Centralized Baseline}: B3 relies on myopic Hungarian matching and greedy relocation rather than optimal dynamic programming, which explains why BID occasionally outperforms B3.
 \end{enumerate}
 Consequently, the quantitative results reported here characterize the relative behavior of multi-agent dispatch mechanisms within this synthetic domain and should not be directly applied to clinical EMS operations without empirical calibration against real-world call logs.
